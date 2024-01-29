@@ -134,7 +134,7 @@ def main_page():
 
         if near_npc is not None and keys[pygame.K_e]:  # Начало уровня
             pass
-        # TODO: при нажатии открывается новый уровень
+        # TODO: при нажатии открывается новый уровень.
         elif near_npc is not None:  # Открывает диалог с NPC
             render_use()
             render_dialog(near_npc)
