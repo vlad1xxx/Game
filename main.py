@@ -30,7 +30,7 @@ def is_near_npc(player, npc):
 
 
 def render_use():
-    text = FONT_TEXT.render('Нажмите "Space", чтобы взаимодействовать', True, (0, 0, 0))
+    text = FONT_TEXT.render('Нажмите "E", чтобы взаимодействовать', True, (0, 0, 0))
     screen.blit(text, (WIDTH - 400, 5))
 
 
@@ -52,7 +52,6 @@ def main():
     clock = pygame.time.Clock()
     running = True
     near_npc = None
-    press_space = False
 
     while running:
 
