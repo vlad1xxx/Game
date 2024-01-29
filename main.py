@@ -37,6 +37,7 @@ def start_screen():
         pygame.display.flip()
         clock.tick(FPS)
 
+
 class MainHero:
     def __init__(self, x, y, name, hp, armor):
         self.x = x
@@ -53,6 +54,7 @@ class NPC:
         self.name = name
         self.dialogue = dialogue
         # self.dialogue_shown = False  # Флаг для отслеживания показа диалога
+
 
 def final_page():
     fon = pygame.transform.scale(load_image('final.jpg'), (WIDTH, HEIGHT))
@@ -75,7 +77,7 @@ def main_page():
         return distance < 75
 
     def render_use():
-        text = FONT_TEXT.render('Нажмите "Space", чтобы взаимодействовать', True, (0, 0, 0))
+        text = FONT_TEXT.render('Нажмите "E", чтобы взаимодействовать', True, (0, 0, 0))
         screen.blit(text, (WIDTH - 400, 5))
 
     def render_dialog(near_npc):
@@ -94,7 +96,6 @@ def main_page():
 
     running = True
     near_npc = None
-    press_space = False
 
     while running:
 
@@ -108,13 +109,13 @@ def main_page():
         # Перемещение игрока
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and player.x > 0:
-            player.x -= 6
+            player.x -= 15
         if keys[pygame.K_RIGHT] and player.x + 30 < WIDTH:
-            player.x += 6
+            player.x += 15
         if keys[pygame.K_UP] and player.y > 0:
-            player.y -= 6
+            player.y -= 15
         if keys[pygame.K_DOWN] and player.y + 30 < HEIGHT:
-            player.y += 6
+            player.y += 15
 
         # Создание Игрока
         pygame.draw.rect(screen, (255, 0, 0), player)
