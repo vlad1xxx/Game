@@ -44,8 +44,9 @@ def main():
     bg = pygame.image.load('images/sand.bmp')
     npcs = [
         NPC(200, 200, "Bob", "Hello, traveler!"),
-        NPC(400, 300, "Alice", "Nice to meet you!"),
-        NPC(600, 400, "Charlie", "How can I help you?")
+        NPC(262, 706, "Alice", "Nice to meet you!"),
+        NPC(1588, 166, "Charlie", "How can I help you?"),
+        NPC(1084, 724, "bomboblud", "Hello")
     ]  # Список NPC
 
     clock = pygame.time.Clock()
@@ -55,13 +56,14 @@ def main():
 
     while running:
 
-        screen.blit(bg, (0, 0))
+        screen.fill((255, 255, 255))
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
 
+        # Перемещение игрока
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and player.x > 0:
             player.x -= 6
@@ -72,10 +74,14 @@ def main():
         if keys[pygame.K_DOWN] and player.y + 30 < HEIGHT:
             player.y += 6
 
+        # Создание Игрока
         pygame.draw.rect(screen, (255, 0, 0), player)
+
+        # Cоздание NPC
         for npc in npcs:
             pygame.draw.circle(screen, (0, 0, 255), (npc.x, npc.y), 20)
 
+        # Находит ближайшено NPC
         for npc in npcs:
             if is_near_npc(player, npc):
                 near_npc = npc
@@ -83,16 +89,12 @@ def main():
             else:
                 near_npc = None
 
-        if near_npc is not None:
+        if near_npc is not None and keys[pygame.K_e]:  # Начало уровня
+            pass
+        # TODO: при нажатии открывается новый уровень
+        elif near_npc is not None:  # Открывает диалог с NPC
             render_use()
-        if press_space and near_npc is not None:
             render_dialog(near_npc)
-        elif near_npc is not None and keys[pygame.K_SPACE]:
-            render_dialog(near_npc)
-            press_space = True
-        else:
-            press_space = False
-
         pygame.display.flip()
         clock.tick(100)
 
