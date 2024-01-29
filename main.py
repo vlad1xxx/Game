@@ -58,7 +58,7 @@ def main():
         screen.blit(bg, (0, 0))
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.K_ESCAPE:
                 running = False
 
         keys = pygame.key.get_pressed()
@@ -84,7 +84,6 @@ def main():
 
         if near_npc is not None:
             render_use()
-
         if press_space and near_npc is not None:
             render_dialog(near_npc)
         elif near_npc is not None and keys[pygame.K_SPACE]:
