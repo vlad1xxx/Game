@@ -1,10 +1,41 @@
 import pygame
 import sys
+import os
 from settings import WIDTH, HEIGHT, FONT_TEXT
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
+clock = pygame.time.Clock()
+FPS = 100
 
+
+def load_image(name, colorkey=None):
+    fullname = os.path.join('images/', name)
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    return image
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+def start_screen():
+    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
 
 class MainHero:
     def __init__(self, x, y, name, hp, armor):
@@ -23,33 +54,44 @@ class NPC:
         self.dialogue = dialogue
         # self.dialogue_shown = False  # Флаг для отслеживания показа диалога
 
+def final_page():
+    fon = pygame.transform.scale(load_image('final.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
 
-def is_near_npc(player, npc):
-    distance = ((player.x - npc.x) ** 2 + (player.y - npc.y) ** 2) ** 0.5
-    return distance < 75
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
-def render_use():
-    text = FONT_TEXT.render('Нажмите "Space", чтобы взаимодействовать', True, (0, 0, 0))
-    screen.blit(text, (WIDTH - 400, 5))
+def main_page():
+    def is_near_npc(player, npc):
+        distance = ((player.x - npc.x) ** 2 + (player.y - npc.y) ** 2) ** 0.5
+        return distance < 75
 
+    def render_use():
+        text = FONT_TEXT.render('Нажмите "Space", чтобы взаимодействовать', True, (0, 0, 0))
+        screen.blit(text, (WIDTH - 400, 5))
 
-def render_dialog(near_npc):
-    dialog = FONT_TEXT.render(near_npc.dialogue, True, (0, 0, 0))
-    screen.blit(dialog, (near_npc.x + 50, near_npc.y - 50))
+    def render_dialog(near_npc):
+        dialog = FONT_TEXT.render(near_npc.dialogue, True, (0, 0, 0))
+        screen.blit(dialog, (near_npc.x + 50, near_npc.y - 50))
 
-
-def main():
     player = pygame.Rect(100, 100, 30, 30)
-    bg = pygame.image.load('images/sand.bmp')
+    bg = load_image('sand.bmp')
+
     npcs = [
         NPC(200, 200, "Bob", "Hello, traveler!"),
         NPC(262, 706, "Alice", "Nice to meet you!"),
         NPC(1588, 166, "Charlie", "How can I help you?"),
         NPC(1084, 724, "bomboblud", "Hello")
-    ]  # Список NPC
+    ]
 
-    clock = pygame.time.Clock()
     running = True
     near_npc = None
     press_space = False
@@ -96,8 +138,13 @@ def main():
             render_use()
             render_dialog(near_npc)
         pygame.display.flip()
-        clock.tick(100)
+        clock.tick(FPS)
 
+
+def main():
+    start_screen()
+    main_page()
+    final_page()
     pygame.quit()
     sys.exit()
 
