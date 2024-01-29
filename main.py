@@ -104,7 +104,7 @@ def main_page():
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    terminate()\
+                    running = False
 
         # Перемещение игрока
         keys = pygame.key.get_pressed()
@@ -133,7 +133,6 @@ def main_page():
                 near_npc = None
 
         if near_npc is not None and keys[pygame.K_e]:  # Начало уровня
-
             pass
         # TODO: при нажатии открывается новый уровень
         elif near_npc is not None:  # Открывает диалог с NPC
