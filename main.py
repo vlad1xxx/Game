@@ -39,12 +39,13 @@ def start_screen():
 
 
 class MainHero:
-    def __init__(self, x, y, name, hp, armor):
+    def __init__(self, x, y, name, hp, armor, coins):
         self.x = x
         self.y = y
         self.name = name
         self.hp = hp
         self.armor = armor
+        self.coins = coins
 
 
 class NPC:
@@ -84,14 +85,15 @@ def main_page():
         dialog = FONT_TEXT.render(near_npc.dialogue, True, (0, 0, 0))
         screen.blit(dialog, (near_npc.x + 50, near_npc.y - 50))
 
-    player = pygame.Rect(100, 100, 30, 30)
+    player = MainHero(500, 500, 'Deyan', 100, 2, 0)
     bg = load_image('sand.bmp')
 
+    pygame.draw.rect(screen, (255, 0, 0), (player.x, player.y, 30, 30))
     npcs = [
         NPC(200, 200, "Bob", "Hello, traveler!"),
         NPC(262, 706, "Alice", "Nice to meet you!"),
         NPC(1588, 166, "Charlie", "How can I help you?"),
-        NPC(1084, 724, "bomboblud", "Hello")
+        NPC(1084, 724, "Doctor", "Do you want to be treated?")
     ]
 
     running = True
@@ -118,7 +120,7 @@ def main_page():
             player.y += 15
 
         # Создание Игрока
-        pygame.draw.rect(screen, (255, 0, 0), player)
+        pygame.draw.rect(screen, (255, 0, 0), (player.x, player.y, 30, 30))
 
         # Cоздание NPC
         for npc in npcs:
@@ -132,9 +134,12 @@ def main_page():
             else:
                 near_npc = None
 
-        if near_npc is not None and keys[pygame.K_e]:  # Начало уровня
+        if near_npc is not None and keys[pygame.K_e]:
+            if near_npc.name == 'Doctor':
+                if player.coins >= 50:
+                    player.hp = 100
             pass
-        # TODO: при нажатии открывается новый уровень.
+        # TODO: при нажатии открывается новый уровень
         elif near_npc is not None:  # Открывает диалог с NPC
             render_use()
             render_dialog(near_npc)
