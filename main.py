@@ -58,8 +58,9 @@ def main():
         screen.blit(bg, (0, 0))
 
         for event in pygame.event.get():
-            if event.type == pygame.K_ESCAPE:
-                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and player.x > 0:
