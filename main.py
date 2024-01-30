@@ -1,7 +1,7 @@
 import pygame
 import sys
 import os
-from settings import WIDTH, HEIGHT, FONT_TEXT
+from settings import WIDTH, HEIGHT, FONT_25, FONT_10
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -73,19 +73,26 @@ def final_page():
 
 
 def main_page():
+
+    def show_info_about_hero():
+        pygame.draw.rect(screen, (255, 0, 0), (10, 10, player.hp * 2, 20))
+        pygame.draw.rect(screen, (0, 0, 0), (7, 7, 203, 23), 3)
+        info = FONT_25.render(str(player.hp), True, (255, 0, 0))
+        screen.blit(info, (215, 10))
+
     def is_near_npc(player, npc):
         distance = ((player.x - npc.x) ** 2 + (player.y - npc.y) ** 2) ** 0.5
         return distance < 75
 
     def render_use():
-        text = FONT_TEXT.render('Нажмите "E", чтобы взаимодействовать', True, (0, 0, 0))
+        text = FONT_25.render('Нажмите "E", чтобы взаимодействовать', True, (0, 0, 0))
         screen.blit(text, (WIDTH - 400, 5))
 
     def render_dialog(near_npc):
-        dialog = FONT_TEXT.render(near_npc.dialogue, True, (0, 0, 0))
+        dialog = FONT_25.render(near_npc.dialogue, True, (0, 0, 0))
         screen.blit(dialog, (near_npc.x + 50, near_npc.y - 50))
 
-    player = MainHero(500, 500, 'Deyan', 100, 2, 0)
+    player = MainHero(500, 500, 'Deyan', 50, 2, 50)
     bg = load_image('sand.bmp')
 
     pygame.draw.rect(screen, (255, 0, 0), (player.x, player.y, 30, 30))
@@ -143,6 +150,7 @@ def main_page():
         elif near_npc is not None:  # Открывает диалог с NPC
             render_use()
             render_dialog(near_npc)
+        show_info_about_hero()
         pygame.display.flip()
         clock.tick(FPS)
 
