@@ -1,7 +1,7 @@
 import pygame
 import sys
 import os
-from settings import WIDTH, HEIGHT, FONT_25, FONT_10
+from settings import WIDTH, HEIGHT, FONT_25
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -38,14 +38,37 @@ def start_screen():
         clock.tick(FPS)
 
 
-class MainHero:
-    def __init__(self, x, y, name, hp, armor, coins):
-        self.x = x
-        self.y = y
+def show_level():
+    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return
+                if event.key == pygame.K_w:
+                    return True
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+class MainHero(pygame.sprite.Sprite):
+
+    def __init__(self, group, x, y, name, hp, armor, coins):
+        super().__init__(group)
+        self.image = load_image("mario.png")
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
         self.name = name
         self.hp = hp
         self.armor = armor
         self.coins = coins
+
 
 
 class NPC:
@@ -81,7 +104,7 @@ def main_page():
         screen.blit(info, (215, 10))
 
     def is_near_npc(player, npc):
-        distance = ((player.x - npc.x) ** 2 + (player.y - npc.y) ** 2) ** 0.5
+        distance = ((player.rect.x - npc.x) ** 2 + (player.rect.y - npc.y) ** 2) ** 0.5
         return distance < 75
 
     def render_use():
@@ -92,10 +115,13 @@ def main_page():
         dialog = FONT_25.render(near_npc.dialogue, True, (0, 0, 0))
         screen.blit(dialog, (near_npc.x + 50, near_npc.y - 50))
 
-    player = MainHero(500, 500, 'Deyan', 50, 2, 50)
+
+    all_sprites = pygame.sprite.Group()
+
+    player = MainHero(all_sprites, 500, 500, 'Deyan', 50, 2, 50)
     bg = load_image('sand.bmp')
 
-    pygame.draw.rect(screen, (255, 0, 0), (player.x, player.y, 30, 30))
+
     npcs = [
         NPC(200, 200, "Bob", "Hello, traveler!"),
         NPC(262, 706, "Alice", "Nice to meet you!"),
@@ -107,7 +133,6 @@ def main_page():
     near_npc = None
 
     while running:
-
         screen.fill((255, 255, 255))
 
         for event in pygame.event.get():
@@ -117,17 +142,17 @@ def main_page():
 
         # Перемещение игрока
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] and player.x > 0:
-            player.x -= 15
-        if keys[pygame.K_RIGHT] and player.x + 30 < WIDTH:
-            player.x += 15
-        if keys[pygame.K_UP] and player.y > 0:
-            player.y -= 15
-        if keys[pygame.K_DOWN] and player.y + 30 < HEIGHT:
-            player.y += 15
+        if keys[pygame.K_a] and player.rect.x > 0:
+            player.rect.x -= 15
+        if keys[pygame.K_d] and player.rect.x + 30 < WIDTH:
+            player.rect.x += 15
+        if keys[pygame.K_w] and player.rect.y > 0:
+            player.rect.y -= 15
+        if keys[pygame.K_s] and player.rect.y + 30 < HEIGHT:
+            player.rect.y += 15
 
         # Создание Игрока
-        pygame.draw.rect(screen, (255, 0, 0), (player.x, player.y, 30, 30))
+        all_sprites.draw(screen)
 
         # Cоздание NPC
         for npc in npcs:
@@ -145,8 +170,8 @@ def main_page():
             if near_npc.name == 'Doctor':
                 if player.coins >= 50:
                     player.hp = 100
-            pass
-        # TODO: при нажатии открывается новый уровень
+            elif near_npc.name == 'Bob':
+                return 1
         elif near_npc is not None:  # Открывает диалог с NPC
             render_use()
             render_dialog(near_npc)
@@ -155,9 +180,18 @@ def main_page():
         clock.tick(FPS)
 
 
+LVL = {1: show_level}
+
+GAME_OVER = False
+
+
 def main():
     start_screen()
-    main_page()
+    running = True
+    while running:
+        GAME_OVER = LVL[main_page()]()
+        if GAME_OVER:
+            running = False
     final_page()
     pygame.quit()
     sys.exit()
