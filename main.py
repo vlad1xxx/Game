@@ -39,16 +39,15 @@ def start_screen():
 
 
 def show_level():
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
+    screen.fill((100, 200, 250))
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    return
+                if event.key == pygame.K_ESCAPE:
+                    return False
                 if event.key == pygame.K_w:
                     return True
 
@@ -68,7 +67,7 @@ class MainHero(pygame.sprite.Sprite):
         self.hp = hp
         self.armor = armor
         self.coins = coins
-
+        self.speed = 8
 
 
 class NPC:
@@ -96,7 +95,6 @@ def final_page():
 
 
 def main_page():
-
     def show_info_about_hero():
         pygame.draw.rect(screen, (255, 0, 0), (10, 10, player.hp * 2, 20))
         pygame.draw.rect(screen, (0, 0, 0), (7, 7, 203, 23), 3)
@@ -115,12 +113,9 @@ def main_page():
         dialog = FONT_25.render(near_npc.dialogue, True, (0, 0, 0))
         screen.blit(dialog, (near_npc.x + 50, near_npc.y - 50))
 
-
     all_sprites = pygame.sprite.Group()
 
-    player = MainHero(all_sprites, 500, 500, 'Deyan', 50, 2, 50)
     bg = load_image('sand.bmp')
-
 
     npcs = [
         NPC(200, 200, "Bob", "Hello, traveler!"),
@@ -128,6 +123,8 @@ def main_page():
         NPC(1588, 166, "Charlie", "How can I help you?"),
         NPC(1084, 724, "Doctor", "Do you want to be treated?")
     ]
+
+    player = MainHero(all_sprites, 500, 500, 'Deyan', 50, 2, 50)
 
     running = True
     near_npc = None
@@ -138,25 +135,25 @@ def main_page():
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    running = False
+                    return None
 
         # Перемещение игрока
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a] and player.rect.x > 0:
-            player.rect.x -= 15
+            player.rect.x -= player.speed
         if keys[pygame.K_d] and player.rect.x + 30 < WIDTH:
-            player.rect.x += 15
+            player.rect.x += player.speed
         if keys[pygame.K_w] and player.rect.y > 0:
-            player.rect.y -= 15
+            player.rect.y -= player.speed
         if keys[pygame.K_s] and player.rect.y + 30 < HEIGHT:
-            player.rect.y += 15
-
-        # Создание Игрока
-        all_sprites.draw(screen)
+            player.rect.y += player.speed
 
         # Cоздание NPC
         for npc in npcs:
             pygame.draw.circle(screen, (0, 0, 255), (npc.x, npc.y), 20)
+
+        # Создание Игрока
+        all_sprites.draw(screen)
 
         # Находит ближайшено NPC
         for npc in npcs:
@@ -180,18 +177,20 @@ def main_page():
         clock.tick(FPS)
 
 
-LVL = {1: show_level}
-
-GAME_OVER = False
+LVL = {None: terminate, 1: show_level}
 
 
 def main():
+    GAME_OVER = False
     start_screen()
     running = True
     while running:
-        GAME_OVER = LVL[main_page()]()
+        running_level = LVL[main_page()]
+        if running_level is not None:
+            GAME_OVER = running_level()
         if GAME_OVER:
             running = False
+
     final_page()
     pygame.quit()
     sys.exit()
