@@ -79,7 +79,7 @@ def show_level():
 
         for i in blocks:
             keys = pygame.key.get_pressed()
-            if player.rect.y + player.rect.h <= i.y and not keys[pygame.K_SPACE]:
+            if player.rect.bottom <= i.y and not player.jump:
                 player.rect.y += player.fall_speed
 
             if keys[pygame.K_a] and player.rect.x > 0:
