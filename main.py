@@ -63,7 +63,6 @@ def show_level():
     blocks = []
     blocks.append(Block(0, HEIGHT - 100, WIDTH, 100))
 
-
     player = MainHero(all_sprites, 500, 500, 'Deyan', 50, 2, 50)
     while True:
         screen.fill('gray')
@@ -80,16 +79,24 @@ def show_level():
 
         for i in blocks:
             keys = pygame.key.get_pressed()
-            if player.rect.y + player.rect.h <= i.y and not keys[pygame.K_w]:
+            if player.rect.y + player.rect.h <= i.y and not keys[pygame.K_SPACE]:
                 player.rect.y += player.fall_speed
 
             if keys[pygame.K_a] and player.rect.x > 0:
                 player.rect.x -= player.speed
             if keys[pygame.K_d] and player.rect.x + 30 < WIDTH:
                 player.rect.x += player.speed
-            if keys[pygame.K_w] and player.rect.y > 0:
-                player.rect.y -= player.speed
 
+                # Обработка прыжка
+            if not player.jump and keys[pygame.K_SPACE]:
+                player.jump = True
+                player.jump_count = 15
+            if player.jump:
+                player.rect.y -= player.jump_count
+                if player.jump_count > -15:
+                    player.jump_count -= 1
+                else:
+                    player.jump = False
 
         all_sprites.draw(screen)
         pygame.display.flip()
@@ -110,6 +117,9 @@ class MainHero(pygame.sprite.Sprite):
         self.coins = coins
         self.speed = 8
         self.fall_speed = 10
+        self.vel = 5
+        self.jump = False
+        self.jump_count = 0
 
 
 
