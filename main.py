@@ -9,6 +9,13 @@ clock = pygame.time.Clock()
 FPS = 100
 
 
+def load_level(filename):
+    filename = "data/" + filename
+    with open(filename, 'r') as mapFile:
+        level_map = [line.strip() for line in mapFile]
+    max_width = max(map(len, level_map))
+    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+
 def load_image(name, colorkey=None):
     fullname = os.path.join('images/', name)
     if not os.path.isfile(fullname):
@@ -39,18 +46,52 @@ def start_screen():
 
 
 def show_level():
-    screen.fill((100, 200, 250))
+    class Block:
+        def __init__(self, x, y, w, h):
+            self.x = x
+            self.y = y
+            self.w = w
+            self.h = h
+            self.color = 'blue'
 
+        def draw(self):
+            pygame.draw.rect(screen, self.color, (self.x, self.y, self.w, self.h))
+
+    screen.fill('gray')
+    all_sprites = pygame.sprite.Group()
+
+    blocks = []
+    blocks.append(Block(0, HEIGHT - 100, WIDTH, 100))
+
+
+    player = MainHero(all_sprites, 500, 500, 'Deyan', 50, 2, 50)
     while True:
+        screen.fill('gray')
+        for i in blocks:
+            i.draw()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return False
-                if event.key == pygame.K_w:
+                if event.key == pygame.K_n:
                     return True
 
+        for i in blocks:
+            keys = pygame.key.get_pressed()
+            if player.rect.y + player.rect.h <= i.y and not keys[pygame.K_w]:
+                player.rect.y += player.fall_speed
+
+            if keys[pygame.K_a] and player.rect.x > 0:
+                player.rect.x -= player.speed
+            if keys[pygame.K_d] and player.rect.x + 30 < WIDTH:
+                player.rect.x += player.speed
+            if keys[pygame.K_w] and player.rect.y > 0:
+                player.rect.y -= player.speed
+
+
+        all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -59,7 +100,7 @@ class MainHero(pygame.sprite.Sprite):
 
     def __init__(self, group, x, y, name, hp, armor, coins):
         super().__init__(group)
-        self.image = load_image("mario.png")
+        self.image = load_image("player1.png")
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -68,6 +109,8 @@ class MainHero(pygame.sprite.Sprite):
         self.armor = armor
         self.coins = coins
         self.speed = 8
+        self.fall_speed = 10
+
 
 
 class NPC:
@@ -90,6 +133,8 @@ def final_page():
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
                 return
+
+
         pygame.display.flip()
         clock.tick(FPS)
 
