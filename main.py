@@ -16,6 +16,7 @@ def load_level(filename):
     max_width = max(map(len, level_map))
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
+
 def load_image(name, colorkey=None):
     fullname = os.path.join('images/', name)
     if not os.path.isfile(fullname):
@@ -88,15 +89,19 @@ def show_level():
                 player.rect.x += player.speed
 
                 # Обработка прыжка
-            if not player.jump and keys[pygame.K_SPACE]:
+            if not player.is_jumping and keys[pygame.K_SPACE] and not player.jump:
+                player.is_jumping = True
                 player.jump = True
                 player.jump_count = 15
+
             if player.jump:
                 player.rect.y -= player.jump_count
                 if player.jump_count > -15:
                     player.jump_count -= 1
                 else:
                     player.jump = False
+            if not keys[pygame.K_SPACE]:
+                player.is_jumping = False
 
         all_sprites.draw(screen)
         pygame.display.flip()
@@ -120,7 +125,7 @@ class MainHero(pygame.sprite.Sprite):
         self.vel = 5
         self.jump = False
         self.jump_count = 0
-
+        self.is_jumping = False
 
 
 class NPC:
@@ -143,7 +148,6 @@ def final_page():
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
                 return
-
 
         pygame.display.flip()
         clock.tick(FPS)
