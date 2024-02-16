@@ -1,3 +1,5 @@
+import math
+
 import pygame
 import sys
 import os
@@ -47,7 +49,38 @@ def start_screen():
 
 
 def show_level():
+    class Fire:
+        def __init__(self, x, y, angle):
+            self.x = x
+            self.y = y
+            self.angle = angle
+            self.speed = 10  # Скорость выстрела
+
+        def update(self):
+            self.x += self.speed * math.cos(self.angle)
+            self.y += self.speed * math.sin(self.angle)
+
+        def draw(self):
+            pygame.draw.circle(screen, 'red', (int(self.x), int(self.y)), 5)
+
     class Block:
+        def __init__(self, x, y, w, h, is_correct):
+            self.x = x
+            self.y = y
+            self.w = w
+            self.h = h
+            self.is_correct = is_correct
+            if is_correct:
+                self.color = 'green'
+            else:
+                self.color = 'red'
+            self.rect = pygame.Rect(x, y, w, h)
+
+        def draw(self):
+            self.rect.x = self.x
+            pygame.draw.rect(screen, self.color, self.rect)
+
+    class Platform:
         def __init__(self, x, y, w, h):
             self.x = x
             self.y = y
@@ -62,14 +95,16 @@ def show_level():
 
     running = True
 
-    blocks = []
-    blocks.append(Block(0, HEIGHT // 3 * 2, WIDTH // 2, 50))
+    platforms = []
+    fires = []
+    platforms.append(Platform(0, HEIGHT // 3 * 2, WIDTH // 2, 50))
     all_sprites = pygame.sprite.Group()
     player = MainHero(all_sprites, 50, 100, 50, 50, 50, 50)
+    clicked_mouse = False
 
     while running:
         screen.fill('gray')
-        for block in blocks:
+        for block in platforms:
             block.draw()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -88,7 +123,7 @@ def show_level():
             player.gravity += 1
             player.rect.y += player.gravity
             coll = False
-            for block in blocks:
+            for block in platforms:
                 if player.rect.colliderect(block.rect):
                     player.on_block = True
                     player.rect.y -= player.gravity
@@ -96,7 +131,7 @@ def show_level():
         else:
             player.rect.y += 1
             coll = False
-            for block in blocks:
+            for block in platforms:
                 if player.rect.colliderect(block.rect):
                     coll = True
             if not coll:
@@ -113,9 +148,23 @@ def show_level():
             player.rect.y -= 1
             player.gravity -= 15
 
+        mouse_buttons = pygame.mouse.get_pressed()
+        if not clicked_mouse and mouse_buttons[0]:
+            clicked_mouse = True
+            mouseX, mouseY = pygame.mouse.get_pos()
+            player_pos = (player.rect.x + player.rect.width // 2, player.rect.y + player.rect.height // 2)
+            angle = math.atan2(mouseY - player_pos[1], mouseX - player_pos[0])
+            fire = Fire(player_pos[0], player_pos[1], angle)
+            fires.append(fire)
+        if not mouse_buttons[0]:
+            clicked_mouse = False
+
+        # Обновление и отрисовка выстрелов
+        for fire in fires:
+            fire.update()
+            fire.draw()
 
         all_sprites.draw(screen)
-
         pygame.display.flip()
         clock.tick(FPS)
 
