@@ -6,7 +6,7 @@ from settings import WIDTH, HEIGHT, FONT_25
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
-FPS = 100
+FPS = 60
 
 
 def load_level(filename):
@@ -54,56 +54,47 @@ def show_level():
             self.w = w
             self.h = h
             self.color = 'blue'
+            self.rect = pygame.Rect(x, y, w, h)
 
         def draw(self):
-            pygame.draw.rect(screen, self.color, (self.x, self.y, self.w, self.h))
+            self.rect.x = self.x
+            pygame.draw.rect(screen, self.color, self.rect)
 
-    screen.fill('gray')
-    all_sprites = pygame.sprite.Group()
+    running = True
 
     blocks = []
-    blocks.append(Block(0, HEIGHT - 100, WIDTH, 100))
+    blocks.append(Block(0, HEIGHT // 3 * 2, WIDTH // 2, 100))
+    all_sprites = pygame.sprite.Group()
+    player = MainHero(all_sprites, 50, 100, 50, 50, 50, 50)
 
-    player = MainHero(all_sprites, 500, 500, 'Deyan', 50, 2, 50)
-    while True:
+    while running:
         screen.fill('gray')
-        for i in blocks:
-            i.draw()
+        for block in blocks:
+            block.draw()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+                if event.type == pygame.K_ESCAPE:
                     return False
-                if event.key == pygame.K_n:
+                if event.type == pygame.K_n:
                     return True
 
-        for i in blocks:
-            keys = pygame.key.get_pressed()
-            if player.rect.bottom <= i.y and not player.jump:
-                player.rect.y += player.fall_speed
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a] and player.rect.left >= 0:
+            player.rect.x -= player.speed
+        if keys[pygame.K_d] and player.rect.right <= WIDTH:
+            player.rect.x += player.speed
 
-            if keys[pygame.K_a] and player.rect.x > 0:
-                player.rect.x -= player.speed
-            if keys[pygame.K_d] and player.rect.x + 30 < WIDTH:
-                player.rect.x += player.speed
-
-                # Обработка прыжка
-            if not player.is_jumping and keys[pygame.K_SPACE] and not player.jump:
-                player.is_jumping = True
-                player.jump = True
-                player.jump_count = 15
-
-            if player.jump:
-                player.rect.y -= player.jump_count
-                if player.jump_count > -15:
-                    player.jump_count -= 1
-                else:
-                    player.jump = False
-            if not keys[pygame.K_SPACE]:
-                player.is_jumping = False
+        on_block = False
+        for block in blocks:
+            if player.rect.colliderect(block.rect):
+                on_block = True
+        if not on_block:
+            player.rect.y += player.fall_speed
 
         all_sprites.draw(screen)
+
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -112,7 +103,7 @@ class MainHero(pygame.sprite.Sprite):
 
     def __init__(self, group, x, y, name, hp, armor, coins):
         super().__init__(group)
-        self.image = load_image("player1.png")
+        self.image = load_image("player_animation/player_stay1.png")
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -121,7 +112,7 @@ class MainHero(pygame.sprite.Sprite):
         self.armor = armor
         self.coins = coins
         self.speed = 8
-        self.fall_speed = 10
+        self.fall_speed = 5
         self.vel = 5
         self.jump = False
         self.jump_count = 0
