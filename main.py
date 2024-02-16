@@ -63,7 +63,7 @@ def show_level():
     running = True
 
     blocks = []
-    blocks.append(Block(0, HEIGHT // 3 * 2, WIDTH // 2, 100))
+    blocks.append(Block(0, HEIGHT // 3 * 2, WIDTH // 2, 50))
     all_sprites = pygame.sprite.Group()
     player = MainHero(all_sprites, 50, 100, 50, 50, 50, 50)
 
@@ -79,19 +79,40 @@ def show_level():
                     return False
                 if event.type == pygame.K_n:
                     return True
+                if event.type == pygame.K_w:
+                    if player.on_block:
+                        player.rect -= 1
+                        player.gravity -= 15
+
+        if not player.on_block:
+            player.gravity += 1
+            player.rect.y += player.gravity
+            coll = False
+            for block in blocks:
+                if player.rect.colliderect(block.rect):
+                    player.on_block = True
+                    player.rect.y -= player.gravity
+                    player.gravity = 0
+        else:
+            player.rect.y += 1
+            coll = False
+            for block in blocks:
+                if player.rect.colliderect(block.rect):
+                    coll = True
+            if not coll:
+                player.on_block = False
+            else:
+                player.rect.y -= 1
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a] and player.rect.left >= 0:
             player.rect.x -= player.speed
         if keys[pygame.K_d] and player.rect.right <= WIDTH:
             player.rect.x += player.speed
+        if keys[pygame.K_SPACE] and player.on_block:
+            player.rect.y -= 1
+            player.gravity -= 15
 
-        on_block = False
-        for block in blocks:
-            if player.rect.colliderect(block.rect):
-                on_block = True
-        if not on_block:
-            player.rect.y += player.fall_speed
 
         all_sprites.draw(screen)
 
@@ -103,7 +124,7 @@ class MainHero(pygame.sprite.Sprite):
 
     def __init__(self, group, x, y, name, hp, armor, coins):
         super().__init__(group)
-        self.image = load_image("player_animation/player_stay1.png")
+        self.image = load_image("player2.png")
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -112,11 +133,12 @@ class MainHero(pygame.sprite.Sprite):
         self.armor = armor
         self.coins = coins
         self.speed = 8
-        self.fall_speed = 5
+        self.gravity = 0
         self.vel = 5
         self.jump = False
         self.jump_count = 0
         self.is_jumping = False
+        self.on_block = True
 
 
 class NPC:
