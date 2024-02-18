@@ -33,6 +33,13 @@ def terminate():
     sys.exit()
 
 
+def all_blocks_correct(blocks_group):
+    for block in blocks_group:
+        if not block.is_correct:
+            return False
+    return True
+
+
 def start_screen():
     fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
@@ -91,21 +98,33 @@ def show_level():
     running = True
 
     algebraic_conversions = {'2+23=4': [Block(100, 100, True),
+                                        Block(150, 100, True),
                                         Block(200, 100, True),
+                                        Block(250, 100, False),
                                         Block(300, 100, True),
-                                        Block(400, 100, False),
-                                        Block(500, 100, True),
-                                        Block(600, 100, True)]}
+                                        Block(350, 100, True)],
+                             '4*19=36': [Block(1000, 200, True),
+                                         Block(1000, 270, True),
+                                         Block(1000, 340, True),
+                                         Block(1000, 410, False),
+                                         Block(1000, 480, True),
+                                         Block(1000, 550, True),
+                                         Block(1000, 620, True)]}
     platforms = []
     platforms.append(Platform(0, HEIGHT // 3 * 2, WIDTH // 2, 50))
     all_sprites = pygame.sprite.Group()
-    blocks = pygame.sprite.Group()
+    first_blocks = pygame.sprite.Group()
+    second_blocks = pygame.sprite.Group()
     fires = pygame.sprite.Group()
     player = MainHero(all_sprites, 50, 100, 50, 50, 50, 50)
 
     for block in algebraic_conversions['2+23=4']:
         all_sprites.add(block)
-        blocks.add(block)
+        first_blocks.add(block)
+
+    for block in algebraic_conversions['4*19=36']:
+        all_sprites.add(block)
+        second_blocks.add(block)
 
     clicked_mouse = False
 
@@ -168,13 +187,28 @@ def show_level():
         for fire in fires:
             fire.update()
 
-        all_sprites.update()
-
-        hits = pygame.sprite.groupcollide(blocks, fires, True, True)
+        hits = pygame.sprite.groupcollide(first_blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
                 return False
 
+        if all_blocks_correct(first_blocks):
+            for block in first_blocks:
+                all_sprites.remove(block)
+            first_blocks.empty()
+
+        hits = pygame.sprite.groupcollide(second_blocks, fires, True, True)
+        for key in hits.keys():
+            if key.is_correct:
+                return False
+
+        if all_blocks_correct(second_blocks):
+            for block in second_blocks:
+                all_sprites.remove(block)
+            second_blocks.empty()
+
+        print(pygame.mouse.get_pos())
+        all_sprites.update()
         all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
