@@ -49,36 +49,31 @@ def start_screen():
 
 
 def show_level():
-    class Fire:
+    class Fire(pygame.sprite.Sprite):
         def __init__(self, x, y, angle):
-            self.x = x
-            self.y = y
+            super().__init__()
             self.angle = angle
-            self.speed = 10  # Скорость выстрела
+            self.speed = 100 # Скорость выстрела
+            self.image = pygame.Surface((5, 5))
+            self.image.fill('red')
+            self.rect = self.image.get_rect()
+            self.rect.center = (x, y)
 
         def update(self):
-            self.x += self.speed * math.cos(self.angle)
-            self.y += self.speed * math.sin(self.angle)
+            self.rect.x += (self.speed * math.cos(self.angle)) / 20
+            self.rect.y += (self.speed * math.sin(self.angle)) / 20
 
-        def draw(self):
-            pygame.draw.circle(screen, 'red', (int(self.x), int(self.y)), 5)
-
-    class Block:
-        def __init__(self, x, y, w, h, is_correct):
-            self.x = x
-            self.y = y
-            self.w = w
-            self.h = h
+    class Block(pygame.sprite.Sprite):
+        def __init__(self, x, y, is_correct):
+            super().__init__()
+            self.image = pygame.Surface((50, 70))
+            self.rect = self.image.get_rect()
+            self.rect.topleft = (x, y)
             self.is_correct = is_correct
             if is_correct:
-                self.color = 'green'
+                self.image.fill('green')
             else:
-                self.color = 'red'
-            self.rect = pygame.Rect(x, y, w, h)
-
-        def draw(self):
-            self.rect.x = self.x
-            pygame.draw.rect(screen, self.color, self.rect)
+                self.image.fill('red')
 
     class Platform:
         def __init__(self, x, y, w, h):
@@ -95,29 +90,38 @@ def show_level():
 
     running = True
 
+    algebraic_conversions = {'2+23=4': [Block(100, 100, True),
+                                        Block(200, 100, True),
+                                        Block(300, 100, True),
+                                        Block(400, 100, False),
+                                        Block(500, 100, True),
+                                        Block(600, 100, True)]}
     platforms = []
-    fires = []
     platforms.append(Platform(0, HEIGHT // 3 * 2, WIDTH // 2, 50))
     all_sprites = pygame.sprite.Group()
+    blocks = pygame.sprite.Group()
+    fires = pygame.sprite.Group()
     player = MainHero(all_sprites, 50, 100, 50, 50, 50, 50)
+
+    for block in algebraic_conversions['2+23=4']:
+        all_sprites.add(block)
+        blocks.add(block)
+
     clicked_mouse = False
 
     while running:
         screen.fill('gray')
-        for block in platforms:
-            block.draw()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.KEYDOWN:
-                if event.type == pygame.K_ESCAPE:
+                if event.key == pygame.K_ESCAPE:
                     return False
-                if event.type == pygame.K_n:
+                if event.key == pygame.K_n:
                     return True
-                if event.type == pygame.K_w:
-                    if player.on_block:
-                        player.rect -= 1
-                        player.gravity -= 15
+
+        for block in platforms:
+            block.draw()
 
         if not player.on_block:
             player.gravity += 1
@@ -155,14 +159,21 @@ def show_level():
             player_pos = (player.rect.x + player.rect.width // 2, player.rect.y + player.rect.height // 2)
             angle = math.atan2(mouseY - player_pos[1], mouseX - player_pos[0])
             fire = Fire(player_pos[0], player_pos[1], angle)
-            fires.append(fire)
+            fires.add(fire)
+            all_sprites.add(fire)
         if not mouse_buttons[0]:
             clicked_mouse = False
 
-        # Обновление и отрисовка выстрелов
+        # Обновление выстрелов
         for fire in fires:
             fire.update()
-            fire.draw()
+
+        all_sprites.update()
+
+        hits = pygame.sprite.groupcollide(blocks, fires, True, True)
+        for key in hits.keys():
+            if key.is_correct:
+                return False
 
         all_sprites.draw(screen)
         pygame.display.flip()
