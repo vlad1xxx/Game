@@ -96,8 +96,6 @@ def show_level():
             if self.isbad:
                 self.image.fill('red')
 
-
-
     running = True
 
     timer = 5
@@ -146,8 +144,6 @@ def show_level():
     player_cords = generate_level(lvl_map)
     player = MainHero(all_sprites, player_cords[0], player_cords[1], 50, 50, 50, 50)
 
-
-
     clicked_mouse = False
 
     while running:
@@ -165,7 +161,6 @@ def show_level():
         if counter_fps == 60:
             timer -= 1
             counter_fps = 0
-
 
         if not player.on_block:
             player.gravity += 1
@@ -237,21 +232,26 @@ def show_level():
 
         for block in first_blocks:
             if player.rect.colliderect(block.rect):
-                # Если игрок сталкивается с блоком слева, не даем ему двигаться влево
-                if player.rect.right > block.rect.left > player.rect.left:
-                    player.rect.right = block.rect.left
-                # Если игрок сталкивается с блоком справа, не даем ему двигаться вправо
-                elif player.rect.left < block.rect.right < player.rect.right:
-                    player.rect.left = block.rect.right
+                if player.rect.centerx < block.rect.left:  # Персонаж движется справа налево
+                    player.rect.right = block.rect.left  # Корректируем его позицию
+                elif player.rect.centerx > block.rect.right:  # Персонаж движется слева направо
+                    player.rect.left = block.rect.right  # Корректируем его позицию
+                elif player.rect.centery < block.rect.top:  # Персонаж движется снизу вверх (необходимо только если персонаж может "проникнуть" сверху)
+                    player.rect.bottom = block.rect.top  # Корректируем его позицию
+                elif player.rect.centery > block.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
+                    player.rect.top = block.rect.bottom  # Корректируем его позицию
 
         for block in second_blocks:
             if player.rect.colliderect(block.rect):
-                # Если игрок сталкивается с блоком слева, не даем ему двигаться влево
-                if player.rect.right > block.rect.left > player.rect.left:
-                    player.rect.right = block.rect.left
-                # Если игрок сталкивается с блоком справа, не даем ему двигаться вправо
-                elif player.rect.left < block.rect.right < player.rect.right:
-                    player.rect.left = block.rect.right
+                # Проверяем столкновение только в вертикальном направлении
+                if player.rect.centerx < block.rect.left:  # Персонаж движется справа налево
+                    player.rect.right = block.rect.left  # Корректируем его позицию
+                elif player.rect.centerx > block.rect.right:  # Персонаж движется слева направо
+                    player.rect.left = block.rect.right  # Корректируем его позицию
+                elif player.rect.centery < block.rect.top:  # Персонаж движется снизу вверх (необходимо только если персонаж может "проникнуть" сверху)
+                    player.rect.bottom = block.rect.top  # Корректируем его позицию
+                elif player.rect.centery > block.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
+                    player.rect.top = block.rect.bottom  # Корректируем его позицию
 
         for platform in platforms:
             if player.rect.colliderect(platform.rect):
@@ -266,7 +266,6 @@ def show_level():
                     player.rect.bottom = platform.rect.top  # Корректируем его позицию
                 elif player.rect.centery > platform.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
                     player.rect.top = platform.rect.bottom  # Корректируем его позицию
-
 
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
