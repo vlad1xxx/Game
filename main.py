@@ -60,15 +60,15 @@ def show_level():
         def __init__(self, x, y, angle):
             super().__init__()
             self.angle = angle
-            self.speed = 100 # Скорость выстрела
+            self.speed = 10 # Скорость выстрела
             self.image = pygame.Surface((5, 5))
             self.image.fill('red')
             self.rect = self.image.get_rect()
             self.rect.center = (x, y)
 
         def update(self):
-            self.rect.x += (self.speed * math.cos(self.angle)) / 20
-            self.rect.y += (self.speed * math.sin(self.angle)) / 20
+            self.rect.x += (self.speed * math.cos(self.angle)) / 2
+            self.rect.y += (self.speed * math.sin(self.angle)) / 2
 
     class Block(pygame.sprite.Sprite):
         def __init__(self, x, y, is_correct):
@@ -82,21 +82,17 @@ def show_level():
             else:
                 self.image.fill('red')
 
-    class Platform:
-        def __init__(self, x, y, w, h):
-            self.x = x
-            self.y = y
-            self.w = w
-            self.h = h
-            self.color = 'blue'
-            self.rect = pygame.Rect(x, y, w, h)
-
-        def draw(self):
-            self.rect.x = self.x
-            pygame.draw.rect(screen, self.color, self.rect)
-
+    class Platform(pygame.sprite.Sprite):
+        def __init__(self, x, y):
+            super().__init__()
+            self.image = pygame.Surface((120, 120))
+            self.rect = self.image.get_rect()
+            self.rect.topleft = (x, y)
+            self.image.fill('blue')
     running = True
 
+    timer = 5
+    counter_fps = 0
     algebraic_conversions = {'2+23=4': [Block(100, 100, True),
                                         Block(150, 100, True),
                                         Block(200, 100, True),
@@ -110,13 +106,16 @@ def show_level():
                                          Block(1000, 480, True),
                                          Block(1000, 550, True),
                                          Block(1000, 620, True)]}
-    platforms = []
-    platforms.append(Platform(0, HEIGHT // 3 * 2, WIDTH // 2, 50))
+
     all_sprites = pygame.sprite.Group()
     first_blocks = pygame.sprite.Group()
     second_blocks = pygame.sprite.Group()
+    platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
-    player = MainHero(all_sprites, 50, 100, 50, 50, 50, 50)
+    player = MainHero(all_sprites, 500, 650, 50, 50, 50, 50)
+    for i in range(4):
+        all_sprites.add(Platform(450 + 120 * i, 700))
+        platforms.add(Platform(450 + 120 * i, 700))
 
     for block in algebraic_conversions['2+23=4']:
         all_sprites.add(block)
@@ -139,8 +138,11 @@ def show_level():
                 if event.key == pygame.K_n:
                     return True
 
-        for block in platforms:
-            block.draw()
+        counter_fps += 1
+        if counter_fps == 60:
+            timer -= 1
+            counter_fps = 0
+
 
         if not player.on_block:
             player.gravity += 1
@@ -192,22 +194,52 @@ def show_level():
             if key.is_correct:
                 return False
 
-        if all_blocks_correct(first_blocks):
-            for block in first_blocks:
-                all_sprites.remove(block)
-            first_blocks.empty()
-
         hits = pygame.sprite.groupcollide(second_blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
                 return False
 
-        if all_blocks_correct(second_blocks):
-            for block in second_blocks:
-                all_sprites.remove(block)
-            second_blocks.empty()
+        for group in [first_blocks, second_blocks]:
+            if len(group) != 0:
+                if all_blocks_correct(group):
+                    for block in group:
+                        all_sprites.remove(block)
+                    group.empty()
+                    timer = 5
+
+        for block in first_blocks:
+            if player.rect.colliderect(block.rect):
+                # Если игрок сталкивается с блоком слева, не даем ему двигаться влево
+                if player.rect.right > block.rect.left > player.rect.left:
+                    player.rect.right = block.rect.left
+                # Если игрок сталкивается с блоком справа, не даем ему двигаться вправо
+                elif player.rect.left < block.rect.right < player.rect.right:
+                    player.rect.left = block.rect.right
+
+        for block in second_blocks:
+            if player.rect.colliderect(block.rect):
+                # Если игрок сталкивается с блоком слева, не даем ему двигаться влево
+                if player.rect.right > block.rect.left > player.rect.left:
+                    player.rect.right = block.rect.left
+                # Если игрок сталкивается с блоком справа, не даем ему двигаться вправо
+                elif player.rect.left < block.rect.right < player.rect.right:
+                    player.rect.left = block.rect.right
+
+        for platform in platforms:
+            if player.rect.colliderect(platform.rect):
+                # Проверяем столкновение только в вертикальном направлении
+                if player.rect.centerx < platform.rect.left:  # Персонаж движется справа налево
+                    player.rect.right = platform.rect.left  # Корректируем его позицию
+                elif player.rect.centerx > platform.rect.right:  # Персонаж движется слева направо
+                    player.rect.left = platform.rect.right  # Корректируем его позицию
+                elif player.rect.centery < platform.rect.top:  # Персонаж движется снизу вверх (необходимо только если персонаж может "проникнуть" сверху)
+                    player.rect.bottom = platform.rect.top  # Корректируем его позицию
+                elif player.rect.centery > platform.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
+                    player.rect.top = platform.rect.bottom  # Корректируем его позицию
 
         print(pygame.mouse.get_pos())
+
+        pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
         all_sprites.draw(screen)
         pygame.display.flip()
