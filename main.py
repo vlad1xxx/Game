@@ -60,7 +60,7 @@ def show_level():
         def __init__(self, x, y, angle):
             super().__init__()
             self.angle = angle
-            self.speed = 10 # Скорость выстрела
+            self.speed = 10  # Скорость выстрела
             self.image = pygame.Surface((5, 5))
             self.image.fill('red')
             self.rect = self.image.get_rect()
@@ -73,7 +73,7 @@ def show_level():
     class Block(pygame.sprite.Sprite):
         def __init__(self, x, y, is_correct):
             super().__init__()
-            self.image = pygame.Surface((50, 70))
+            self.image = pygame.Surface((120, 120))
             self.rect = self.image.get_rect()
             self.rect.topleft = (x, y)
             self.is_correct = is_correct
@@ -83,12 +83,21 @@ def show_level():
                 self.image.fill('red')
 
     class Platform(pygame.sprite.Sprite):
-        def __init__(self, x, y):
+        def __init__(self, x, y, image, isbad=False):
             super().__init__()
-            self.image = pygame.Surface((120, 120))
+            self.isbad = isbad
+            if not image:
+                self.image = pygame.Surface((120, 120))
+                self.image.fill('blue')
+            else:
+                self.image = image
             self.rect = self.image.get_rect()
             self.rect.topleft = (x, y)
-            self.image.fill('blue')
+            if self.isbad:
+                self.image.fill('red')
+
+
+
     running = True
 
     timer = 5
@@ -112,18 +121,32 @@ def show_level():
     second_blocks = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
-    player = MainHero(all_sprites, 500, 650, 50, 50, 50, 50)
-    for i in range(4):
-        all_sprites.add(Platform(450 + 120 * i, 700))
-        platforms.add(Platform(450 + 120 * i, 700))
 
-    for block in algebraic_conversions['2+23=4']:
-        all_sprites.add(block)
-        first_blocks.add(block)
+    def generate_level(level):
+        player_cords = None
+        for y in range(len(level)):
+            for x in range(len(level[y])):
+                if level[y][x] == '-':  # Обычная платформа
+                    platforms.add(Platform(x * 120, y * 120, load_image('platform.png')))
+                    all_sprites.add(Platform(x * 120, y * 120, load_image('platform.png')))
+                elif level[y][x] == '_':  # Плохая платформа
+                    platforms.add(Platform(x * 120, y * 120, None, isbad=True))
+                    all_sprites.add(Platform(x * 120, y * 120, None, isbad=True))
+                elif level[y][x] == '@':  # Персонаж
+                    player_cords = (x * 120, y * 120)
+                elif level[y][x] == '#':  # Зеленый блок
+                    first_blocks.add(Block(x * 120, y * 120, True))
+                    all_sprites.add(Block(x * 120, y * 120, True))
+                elif level[y][x] == '$':  # Красный блок
+                    first_blocks.add(Block(x * 120, y * 120, False))
+                    all_sprites.add(Block(x * 120, y * 120, False))
+        return player_cords
 
-    for block in algebraic_conversions['4*19=36']:
-        all_sprites.add(block)
-        second_blocks.add(block)
+    lvl_map = load_level('lvl.txt')
+    player_cords = generate_level(lvl_map)
+    player = MainHero(all_sprites, player_cords[0], player_cords[1], 50, 50, 50, 50)
+
+
 
     clicked_mouse = False
 
@@ -148,17 +171,21 @@ def show_level():
             player.gravity += 1
             player.rect.y += player.gravity
             coll = False
-            for block in platforms:
-                if player.rect.colliderect(block.rect):
+            for platform in platforms:
+                if player.rect.colliderect(platform.rect):
+                    if platform.isbad:
+                        return False
                     player.on_block = True
                     player.rect.y -= player.gravity
                     player.gravity = 0
         else:
             player.rect.y += 1
             coll = False
-            for block in platforms:
-                if player.rect.colliderect(block.rect):
+            for platform in platforms:
+                if player.rect.colliderect(platform.rect):
                     coll = True
+                    if platform.isbad:
+                        return False
             if not coll:
                 player.on_block = False
             else:
@@ -192,6 +219,7 @@ def show_level():
         hits = pygame.sprite.groupcollide(first_blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
+                print('salam')
                 return False
 
         hits = pygame.sprite.groupcollide(second_blocks, fires, True, True)
@@ -227,6 +255,8 @@ def show_level():
 
         for platform in platforms:
             if player.rect.colliderect(platform.rect):
+                if platform.isbad:
+                    return False
                 # Проверяем столкновение только в вертикальном направлении
                 if player.rect.centerx < platform.rect.left:  # Персонаж движется справа налево
                     player.rect.right = platform.rect.left  # Корректируем его позицию
@@ -237,7 +267,6 @@ def show_level():
                 elif player.rect.centery > platform.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
                     player.rect.top = platform.rect.bottom  # Корректируем его позицию
 
-        print(pygame.mouse.get_pos())
 
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
