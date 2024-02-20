@@ -6,8 +6,8 @@ import os
 import random
 from settings import WIDTH, HEIGHT, FONT_25
 
-WIDTH = 1280
-HEIGHT = 720
+WIDTH = 1920
+HEIGHT = 1040
 IMAGES = {'0': 'number_0.png',
           '1': 'number_1.png',
           '2': 'number_2.png',
@@ -181,7 +181,7 @@ def show_level():
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
 
-    for elem in generate_random_algebraic_conversions_horizontal(2, 1, 1, 350, 100, ['+', '-', '*']):
+    for elem in generate_random_algebraic_conversions_horizontal(2, 1, 1, 720, 360, ['+', '-', '*']):
         blocks.add(elem)
 
     def generate_level(level):
@@ -196,23 +196,34 @@ def show_level():
                 if lvl_id in bad_platform_ids:
                     all_sprites.add(Platform(x * tile_size, y * tile_size, image, True))
                     platforms.add(Platform(x * tile_size, y * tile_size, image, True))
+
                 elif lvl_map.get_tile_gid(x, y, 0) in platform_ids:
                     all_sprites.add(Platform(x * tile_size, y * tile_size, image))
                     platforms.add(Platform(x * tile_size, y * tile_size, image))
                 else:
                     all_sprites.add(Platform(x * tile_size, y * tile_size, image))
+            print(s)
+
+    #bad_platform_ids = [              1 lvl
+    #    19, 20, 21, 22
+    #]
+    #platform_ids = [
+    #    2, 3, 4, 8, 9, 10, 12, 13
+    #]
 
     bad_platform_ids = [
-        16, 17, 18, 19
+        12
     ]
     platform_ids = [
-        1, 2, 4, 7, 5, 10, 11, 12
+        2, 3, 4, 5, 6, 7, 8, 9, 10, 11
     ]
-    lvl_map = pytmx.load_pygame('maps/map1.tmx')
+
+    lvl_map = pytmx.load_pygame('maps/map3.tmx')
     height = lvl_map.height
     width = lvl_map.width
     tile_size = lvl_map.tilewidth
-    player_cords = (640, 360)
+    #player_cords = (920, 560) 1 lvl
+    player_cords = (160, 160)
     player = MainHero(units_group, player_cords[0], player_cords[1], 50, 50, 50, 50)
     generate_level(lvl_map)
     clicked_mouse = False
