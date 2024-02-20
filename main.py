@@ -248,21 +248,25 @@ def show_level():
             player.gravity += 1
             player.rect.y += player.gravity
             coll = False
-            for platform in platforms:
-                if player.rect.colliderect(platform.rect):
-                    if platform.isbad:
-                        return False
-                    player.on_block = True
-                    player.rect.y -= player.gravity
-                    player.gravity = 0
+            for ls in [platforms, blocks]:
+                for elem in ls:
+                    if player.rect.colliderect(elem.rect):
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                return False
+                        player.on_block = True
+                        player.rect.y -= player.gravity
+                        player.gravity = 0
         else:
             player.rect.y += 1
             coll = False
-            for platform in platforms:
-                if player.rect.colliderect(platform.rect):
-                    coll = True
-                    if platform.isbad:
-                        return False
+            for ls in [platforms, blocks]:
+                for elem in ls:
+                    if player.rect.colliderect(elem.rect):
+                        coll = True
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                return False
             if not coll:
                 player.on_block = False
             else:
@@ -314,29 +318,21 @@ def show_level():
             for block in blocks_need_delete:
                 blocks.remove(block)
 
-        for block in blocks:
-            if player.rect.colliderect(block.rect):
-                if player.rect.centerx < block.rect.left:  # Персонаж движется справа налево
-                    player.rect.right = block.rect.left  # Корректируем его позицию
-                elif player.rect.centerx > block.rect.right:  # Персонаж движется слева направо
-                    player.rect.left = block.rect.right  # Корректируем его позицию
-                elif player.rect.centery < block.rect.top:  # Персонаж движется снизу вверх
-                    player.rect.bottom = block.rect.top  # Корректируем его позицию
-                elif player.rect.centery > block.rect.bottom:  # Персонаж движется сверху вниз
-                    player.rect.top = block.rect.bottom  # Корректируем его позицию
+        for ls in [platforms, blocks]:
+            for elem in ls:
+                if player.rect.colliderect(elem.rect):
+                    if isinstance(elem, Platform):
+                        if elem.isbad:
+                            return False
+                    if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
+                        player.rect.right = elem.rect.left  # Корректируем его позицию
+                    elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
+                        player.rect.left = elem.rect.right  # Корректируем его позицию
+                    elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
+                        player.rect.bottom = elem.rect.top  # Корректируем его позицию
+                    elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
+                        player.rect.top = elem.rect.bottom  # Корректируем его позицию
 
-        for platform in platforms:
-            if player.rect.colliderect(platform.rect):
-                if platform.isbad:
-                    return False
-                if player.rect.centerx < platform.rect.left:
-                    player.rect.right = platform.rect.left
-                elif player.rect.centerx > platform.rect.right:
-                    player.rect.left = platform.rect.right
-                elif player.rect.centery < platform.rect.top:
-                    player.rect.bottom = platform.rect.top
-                elif player.rect.centery > platform.rect.bottom:
-                    player.rect.top = platform.rect.bottom
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
         all_sprites.draw(screen)
