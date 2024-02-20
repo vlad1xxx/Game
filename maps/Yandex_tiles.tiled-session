@@ -1,0 +1,68 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "map.tmx",
+    "expandedProjectPaths": [
+    ],
+    "file.lastUsedOpenFilter": "Все файлы (*)",
+    "fileStates": {
+        "map.tmx": {
+            "scale": 4,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 32.125,
+                "y": -13.75
+            }
+        },
+        "tiels.tsx": {
+            "scaleInDock": 3,
+            "scaleInEditor": 5.5
+        },
+        "tiles1.tsx": {
+            "scaleInDock": 4,
+            "scaleInEditor": 8
+        },
+        "tiles2.tsx": {
+            "scaleInDock": 3,
+            "scaleInEditor": 8
+        },
+        "tiles3.tsx": {
+            "scaleInDock": 4,
+            "scaleInEditor": 8
+        },
+        "tiles4.tsx": {
+            "scaleInDock": 4,
+            "scaleInEditor": 8
+        }
+    },
+    "last.imagePath": "C:/Users/Ha4trueKa4/Desktop/caves_tiles",
+    "map.height": 9,
+    "map.lastUsedFormat": "tmx",
+    "map.renderOrder": null,
+    "map.tileHeight": 8,
+    "map.tileWidth": 8,
+    "map.width": 16,
+    "openFiles": [
+        "map.tmx",
+        "tiles1.tsx",
+        "tiles2.tsx",
+        "tiles3.tsx",
+        "tiles4.tsx"
+    ],
+    "project": "Yandex_tiles.tiled-project",
+    "recentFiles": [
+        "tiles4.tsx",
+        "tiles3.tsx",
+        "tiles2.tsx",
+        "tiles1.tsx",
+        "map.tmx",
+        "tiels.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 8,
+        "width": 8
+    }
+}
