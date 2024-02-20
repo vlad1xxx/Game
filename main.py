@@ -1,9 +1,12 @@
 import math
-
+import pytmx
 import pygame
 import sys
 import os
 from settings import WIDTH, HEIGHT, FONT_25
+
+WIDTH = 1280
+HEIGHT = 720
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -73,7 +76,7 @@ def show_level():
     class Block(pygame.sprite.Sprite):
         def __init__(self, x, y, is_correct):
             super().__init__()
-            self.image = pygame.Surface((120, 120))
+            self.image = pygame.Surface((160, 160))
             self.rect = self.image.get_rect()
             self.rect.topleft = (x, y)
             self.is_correct = is_correct
@@ -87,14 +90,13 @@ def show_level():
             super().__init__()
             self.isbad = isbad
             if not image:
-                self.image = pygame.Surface((120, 120))
+                self.image = pygame.Surface((160, 160))
                 self.image.fill('blue')
             else:
                 self.image = image
             self.rect = self.image.get_rect()
             self.rect.topleft = (x, y)
-            if self.isbad:
-                self.image.fill('red')
+
 
     running = True
 
@@ -117,33 +119,43 @@ def show_level():
     all_sprites = pygame.sprite.Group()
     first_blocks = pygame.sprite.Group()
     second_blocks = pygame.sprite.Group()
+    units_group = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
 
     def generate_level(level):
         player_cords = None
-        for y in range(len(level)):
-            for x in range(len(level[y])):
-                if level[y][x] == '-':  # Обычная платформа
-                    platforms.add(Platform(x * 120, y * 120, load_image('platform.png')))
-                    all_sprites.add(Platform(x * 120, y * 120, load_image('platform.png')))
-                elif level[y][x] == '_':  # Плохая платформа
-                    platforms.add(Platform(x * 120, y * 120, None, isbad=True))
-                    all_sprites.add(Platform(x * 120, y * 120, None, isbad=True))
-                elif level[y][x] == '@':  # Персонаж
-                    player_cords = (x * 120, y * 120)
-                elif level[y][x] == '#':  # Зеленый блок
-                    first_blocks.add(Block(x * 120, y * 120, True))
-                    all_sprites.add(Block(x * 120, y * 120, True))
-                elif level[y][x] == '$':  # Красный блок
-                    first_blocks.add(Block(x * 120, y * 120, False))
-                    all_sprites.add(Block(x * 120, y * 120, False))
-        return player_cords
+        for y in range(level.height):
+            s = ''
+            for x in range(level.width):
 
-    lvl_map = load_level('lvl.txt')
-    player_cords = generate_level(lvl_map)
-    player = MainHero(all_sprites, player_cords[0], player_cords[1], 50, 50, 50, 50)
+                image = lvl_map.get_tile_image(x, y, 0)
+                lvl_id = lvl_map.get_tile_gid(x, y, 0)
+                s += str(lvl_id) + ' '
+                if lvl_id in bad_platform_ids:
+                    all_sprites.add(Platform(x * tile_size, y * tile_size, image, True))
+                    platforms.add(Platform(x * tile_size, y * tile_size, image, True))
+                elif lvl_map.get_tile_gid(x, y, 0) in platform_ids:
+                    all_sprites.add(Platform(x * tile_size, y * tile_size, image))
+                    platforms.add(Platform(x * tile_size, y * tile_size, image))
+                else:
+                    all_sprites.add(Platform(x * tile_size, y * tile_size, image))
 
+
+
+    bad_platform_ids = [
+        16, 17, 18, 19
+    ]
+    platform_ids = [
+        1, 2, 4, 7, 5, 10, 11, 12
+    ]
+    lvl_map = pytmx.load_pygame('maps/map1.tmx')
+    height = lvl_map.height
+    width = lvl_map.width
+    tile_size = lvl_map.tilewidth
+    player_cords = (640, 360)
+    player = MainHero(units_group, player_cords[0], player_cords[1], 50, 50, 50, 50)
+    generate_level(lvl_map)
     clicked_mouse = False
 
     while running:
@@ -230,6 +242,15 @@ def show_level():
                     group.empty()
                     timer = 5
 
+
+        if len(first_blocks) != 0:
+            if all_blocks_correct(first_blocks):
+                for block in first_blocks:
+                    all_sprites.remove(block)
+                group.empty()
+                timer = 5
+
+
         for block in first_blocks:
             if player.rect.colliderect(block.rect):
                 if player.rect.centerx < block.rect.left:  # Персонаж движется справа налево
@@ -270,6 +291,8 @@ def show_level():
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
         all_sprites.draw(screen)
+        units_group.update()
+        units_group.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
