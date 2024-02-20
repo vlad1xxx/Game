@@ -3,15 +3,76 @@ import pytmx
 import pygame
 import sys
 import os
+import random
 from settings import WIDTH, HEIGHT, FONT_25
 
 WIDTH = 1280
 HEIGHT = 720
+IMAGES = {'0': 'number_0.png',
+          '1': 'number_1.png',
+          '2': 'number_2.png',
+          '3': 'number_3.png',
+          '4': 'number_4.png',
+          '5': 'number_5.png',
+          '6': 'number_6.png',
+          '7': 'number_7.png',
+          '8': 'number_8.png',
+          '9': 'number_9.png',
+          '+': 'symbol_plus.png',
+          '=': 'symbol_equal.png',
+          '-': 'symbol_minus.png',
+          '*': 'symbol_mult.png'}
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 FPS = 60
+
+
+class Fire(pygame.sprite.Sprite):
+    def __init__(self, x, y, angle):
+        super().__init__()
+        self.angle = angle
+        self.speed = 10  # Скорость выстрела
+        self.image = pygame.Surface((5, 5))
+        self.image.fill('red')
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+
+    def update(self):
+        self.rect.x += (self.speed * math.cos(self.angle)) / 2
+        self.rect.y += (self.speed * math.sin(self.angle)) / 2
+
+
+class Block(pygame.sprite.Sprite):
+    def __init__(self, x, y, is_correct, num_group, value):
+        super().__init__()
+        if value in IMAGES:
+            self.image = load_image(IMAGES[value])
+        else:
+            self.image = pygame.Surface((70, 100))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
+        self.is_correct = is_correct
+        self.num_group = num_group
+        self.value = value
+        # if is_correct:
+        #     self.image.fill('green')
+        # else:
+        #     self.image.fill('red')
+
+
+class Platform(pygame.sprite.Sprite):
+    def __init__(self, x, y, image, isbad=False):
+        super().__init__()
+        self.isbad = isbad
+        if not image:
+            self.image = pygame.Surface((160, 160))
+            self.image.fill('blue')
+        else:
+            self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = (x, y)
 
 
 def load_level(filename):
@@ -34,6 +95,56 @@ def load_image(name, colorkey=None):
 def terminate():
     pygame.quit()
     sys.exit()
+
+
+def generate_random_algebraic_conversions_vertical(count_correct_num, count_incorrect_num, num_group, x, y, symbols):
+    conversions = []
+    random_num = random.choices(['1', '2', '3', '4', '5', '6', '7', '8', '9'], k=count_correct_num)
+    for num in random_num:
+        conversions.append(Block(x, 0, True, num_group, num))
+    conversions.insert(random.randrange(1, len(conversions)), Block(0, y, True, num_group, random.choice(symbols)))
+    line = ''
+    for elem in conversions:
+        line += elem.value
+    result = eval(line)
+    conversions.append(Block(x, 0, True, num_group, '='))
+    for num in str(result):
+        conversions.append(Block(x, 0, True, num_group, num))
+
+    while count_incorrect_num != 0:
+        incorrect_num = random.choice(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
+        if incorrect_num not in conversions:
+            conversions.insert(random.randrange(count_correct_num + 1), Block(x, 0, False, 1, incorrect_num))
+            count_incorrect_num -= 1
+
+    for i in range(len(conversions)):
+        conversions[i].rect.y = y + i * 100
+    return conversions
+
+
+def generate_random_algebraic_conversions_horizontal(count_correct_num, count_incorrect_num, num_group, x, y, symbols):
+    conversions = []
+    random_num = random.choices(['1', '2', '3', '4', '5', '6', '7', '8', '9'], k=count_correct_num)
+    for num in random_num:
+        conversions.append(Block(0, y, True, num_group, num))
+    conversions.insert(random.randrange(1, len(conversions)), Block(0, y, True, num_group, random.choice(symbols)))
+    line = ''
+    for elem in conversions:
+        line += elem.value
+    result = eval(line)
+    conversions.append(Block(0, y, True, num_group, '='))
+    for num in str(result):
+        conversions.append(Block(0, y, True, num_group, num))
+
+    while count_incorrect_num != 0:
+        incorrect_num = random.choice(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
+        if incorrect_num not in conversions:
+            conversions.insert(random.randrange(count_correct_num + 1), Block(0, y, False, 1, incorrect_num))
+            count_incorrect_num -= 1
+
+    for i in range(len(conversions)):
+        conversions[i].rect.x = x + i * 70
+    return conversions
 
 
 def all_blocks_correct(blocks_group):
@@ -59,69 +170,19 @@ def start_screen():
 
 
 def show_level():
-    class Fire(pygame.sprite.Sprite):
-        def __init__(self, x, y, angle):
-            super().__init__()
-            self.angle = angle
-            self.speed = 10  # Скорость выстрела
-            self.image = pygame.Surface((5, 5))
-            self.image.fill('red')
-            self.rect = self.image.get_rect()
-            self.rect.center = (x, y)
-
-        def update(self):
-            self.rect.x += (self.speed * math.cos(self.angle)) / 2
-            self.rect.y += (self.speed * math.sin(self.angle)) / 2
-
-    class Block(pygame.sprite.Sprite):
-        def __init__(self, x, y, is_correct):
-            super().__init__()
-            self.image = pygame.Surface((160, 160))
-            self.rect = self.image.get_rect()
-            self.rect.topleft = (x, y)
-            self.is_correct = is_correct
-            if is_correct:
-                self.image.fill('green')
-            else:
-                self.image.fill('red')
-
-    class Platform(pygame.sprite.Sprite):
-        def __init__(self, x, y, image, isbad=False):
-            super().__init__()
-            self.isbad = isbad
-            if not image:
-                self.image = pygame.Surface((160, 160))
-                self.image.fill('blue')
-            else:
-                self.image = image
-            self.rect = self.image.get_rect()
-            self.rect.topleft = (x, y)
-
-
     running = True
 
     timer = 5
     counter_fps = 0
-    algebraic_conversions = {'2+23=4': [Block(100, 100, True),
-                                        Block(150, 100, True),
-                                        Block(200, 100, True),
-                                        Block(250, 100, False),
-                                        Block(300, 100, True),
-                                        Block(350, 100, True)],
-                             '4*19=36': [Block(1000, 200, True),
-                                         Block(1000, 270, True),
-                                         Block(1000, 340, True),
-                                         Block(1000, 410, False),
-                                         Block(1000, 480, True),
-                                         Block(1000, 550, True),
-                                         Block(1000, 620, True)]}
 
     all_sprites = pygame.sprite.Group()
-    first_blocks = pygame.sprite.Group()
-    second_blocks = pygame.sprite.Group()
+    blocks = pygame.sprite.Group()
     units_group = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
+
+    for elem in generate_random_algebraic_conversions_horizontal(2, 1, 1, 350, 100, ['+', '-', '*']):
+        blocks.add(elem)
 
     def generate_level(level):
         player_cords = None
@@ -140,8 +201,6 @@ def show_level():
                     platforms.add(Platform(x * tile_size, y * tile_size, image))
                 else:
                     all_sprites.add(Platform(x * tile_size, y * tile_size, image))
-
-
 
     bad_platform_ids = [
         16, 17, 18, 19
@@ -223,76 +282,56 @@ def show_level():
         for fire in fires:
             fire.update()
 
-        hits = pygame.sprite.groupcollide(first_blocks, fires, True, True)
-        for key in hits.keys():
-            if key.is_correct:
-                print('salam')
-                return False
-
-        hits = pygame.sprite.groupcollide(second_blocks, fires, True, True)
+        hits = pygame.sprite.groupcollide(platforms, fires, False, True)
+        hits = pygame.sprite.groupcollide(blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
                 return False
 
-        for group in [first_blocks, second_blocks]:
-            if len(group) != 0:
-                if all_blocks_correct(group):
-                    for block in group:
-                        all_sprites.remove(block)
-                    group.empty()
-                    timer = 5
+        blocks_need_delete = []
+        all_correct = True
+        for key in hits.keys():
+            for block in blocks:
+                if block.num_group == key.num_group:
+                    if block.is_correct:
+                        blocks_need_delete.append(block)
+                    else:
+                        all_correct = False
+                        break
 
+        if all_correct:
+            for block in blocks_need_delete:
+                blocks.remove(block)
 
-        if len(first_blocks) != 0:
-            if all_blocks_correct(first_blocks):
-                for block in first_blocks:
-                    all_sprites.remove(block)
-                group.empty()
-                timer = 5
-
-
-        for block in first_blocks:
+        for block in blocks:
             if player.rect.colliderect(block.rect):
                 if player.rect.centerx < block.rect.left:  # Персонаж движется справа налево
                     player.rect.right = block.rect.left  # Корректируем его позицию
                 elif player.rect.centerx > block.rect.right:  # Персонаж движется слева направо
                     player.rect.left = block.rect.right  # Корректируем его позицию
-                elif player.rect.centery < block.rect.top:  # Персонаж движется снизу вверх (необходимо только если персонаж может "проникнуть" сверху)
+                elif player.rect.centery < block.rect.top:  # Персонаж движется снизу вверх
                     player.rect.bottom = block.rect.top  # Корректируем его позицию
-                elif player.rect.centery > block.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
-                    player.rect.top = block.rect.bottom  # Корректируем его позицию
-
-        for block in second_blocks:
-            if player.rect.colliderect(block.rect):
-                # Проверяем столкновение только в вертикальном направлении
-                if player.rect.centerx < block.rect.left:  # Персонаж движется справа налево
-                    player.rect.right = block.rect.left  # Корректируем его позицию
-                elif player.rect.centerx > block.rect.right:  # Персонаж движется слева направо
-                    player.rect.left = block.rect.right  # Корректируем его позицию
-                elif player.rect.centery < block.rect.top:  # Персонаж движется снизу вверх (необходимо только если персонаж может "проникнуть" сверху)
-                    player.rect.bottom = block.rect.top  # Корректируем его позицию
-                elif player.rect.centery > block.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
+                elif player.rect.centery > block.rect.bottom:  # Персонаж движется сверху вниз
                     player.rect.top = block.rect.bottom  # Корректируем его позицию
 
         for platform in platforms:
             if player.rect.colliderect(platform.rect):
                 if platform.isbad:
                     return False
-                # Проверяем столкновение только в вертикальном направлении
-                if player.rect.centerx < platform.rect.left:  # Персонаж движется справа налево
-                    player.rect.right = platform.rect.left  # Корректируем его позицию
-                elif player.rect.centerx > platform.rect.right:  # Персонаж движется слева направо
-                    player.rect.left = platform.rect.right  # Корректируем его позицию
-                elif player.rect.centery < platform.rect.top:  # Персонаж движется снизу вверх (необходимо только если персонаж может "проникнуть" сверху)
-                    player.rect.bottom = platform.rect.top  # Корректируем его позицию
-                elif player.rect.centery > platform.rect.bottom:  # Персонаж движется сверху вниз (необходимо только если персонаж может "проникнуть" снизу)
-                    player.rect.top = platform.rect.bottom  # Корректируем его позицию
-
+                if player.rect.centerx < platform.rect.left:
+                    player.rect.right = platform.rect.left
+                elif player.rect.centerx > platform.rect.right:
+                    player.rect.left = platform.rect.right
+                elif player.rect.centery < platform.rect.top:
+                    player.rect.bottom = platform.rect.top
+                elif player.rect.centery > platform.rect.bottom:
+                    player.rect.top = platform.rect.bottom
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
         all_sprites.draw(screen)
         units_group.update()
         units_group.draw(screen)
+        blocks.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -364,8 +403,6 @@ def main_page():
 
     all_sprites = pygame.sprite.Group()
 
-    bg = load_image('sand.bmp')
-
     npcs = [
         NPC(200, 200, "Bob", "Hello, traveler!"),
         NPC(262, 706, "Alice", "Nice to meet you!"),
@@ -404,7 +441,7 @@ def main_page():
         # Создание Игрока
         all_sprites.draw(screen)
 
-        # Находит ближайшено NPC
+        # Находит ближайшего NPC
         for npc in npcs:
             if is_near_npc(player, npc):
                 near_npc = npc
