@@ -4,24 +4,24 @@ import pygame
 import sys
 import os
 import random
-from settings import WIDTH, HEIGHT, FONT_25
+from settings import FONT_25
 
 WIDTH = 1920
 HEIGHT = 1040
-IMAGES = {'0': 'number_0.png',
-          '1': 'number_1.png',
-          '2': 'number_2.png',
-          '3': 'number_3.png',
-          '4': 'number_4.png',
-          '5': 'number_5.png',
-          '6': 'number_6.png',
-          '7': 'number_7.png',
-          '8': 'number_8.png',
-          '9': 'number_9.png',
-          '+': 'symbol_plus.png',
-          '=': 'symbol_equal.png',
-          '-': 'symbol_minus.png',
-          '*': 'symbol_mult.png'}
+IMAGES = {'0': 'blocks/number1.png',
+          '1': 'blocks/number2.png',
+          '2': 'blocks/number3.png',
+          '3': 'blocks/number4.png',
+          '4': 'blocks/number5.png',
+          '5': 'blocks/number6.png',
+          '6': 'blocks/number7.png',
+          '7': 'blocks/number8.png',
+          '8': 'blocks/number9.png',
+          '9': 'blocks/number10.png',
+          '+': 'blocks/symbol_plus.png',
+          '=': 'blocks/symbol_equal.png',
+          '-': 'blocks/symbol_minus.png',
+          '*': 'blocks/symbol_mult.png'}
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -56,10 +56,6 @@ class Block(pygame.sprite.Sprite):
         self.is_correct = is_correct
         self.num_group = num_group
         self.value = value
-        # if is_correct:
-        #     self.image.fill('green')
-        # else:
-        #     self.image.fill('red')
 
 
 class Platform(pygame.sprite.Sprite):
@@ -83,7 +79,7 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-def load_image(name, colorkey=None):
+def load_image(name):
     fullname = os.path.join('images/', name)
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
@@ -143,7 +139,7 @@ def generate_random_algebraic_conversions_horizontal(count_correct_num, count_in
             count_incorrect_num -= 1
 
     for i in range(len(conversions)):
-        conversions[i].rect.x = x + i * 70
+        conversions[i].rect.x = x + i * 80
     return conversions
 
 
@@ -169,7 +165,26 @@ def start_screen():
         clock.tick(FPS)
 
 
-def show_level():
+def generate_level(level, all_group, group_plats, bad_plats, good_plats):
+    for y in range(level.height):
+        s = ''
+        for x in range(level.width):
+
+            image = level.get_tile_image(x, y, 0)
+            lvl_id = level.get_tile_gid(x, y, 0)
+            s += str(lvl_id) + ' '
+            if lvl_id in bad_plats:
+                all_group.add(Platform(x * level.tilewidth, y * level.tilewidth, image, True))
+                group_plats.add(Platform(x * level.tilewidth, y * level.tilewidth, image, True))
+
+            elif level.get_tile_gid(x, y, 0) in good_plats:
+                all_group.add(Platform(x * level.tilewidth, y * level.tilewidth, image))
+                group_plats.add(Platform(x * level.tilewidth, y * level.tilewidth, image))
+            else:
+                all_group.add(Platform(x * level.tilewidth, y * level.tilewidth, image))
+
+
+def show_level(map_name, player_cords, good_plats, bad_plats):
     running = True
 
     timer = 5
@@ -181,51 +196,15 @@ def show_level():
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
 
-    for elem in generate_random_algebraic_conversions_horizontal(2, 1, 1, 720, 360, ['+', '-', '*']):
+    for elem in generate_random_algebraic_conversions_horizontal(2, 1, 1, 12 * 80, 3 * 80, ['+', '-', '*']):
         blocks.add(elem)
 
-    def generate_level(level):
-        player_cords = None
-        for y in range(level.height):
-            s = ''
-            for x in range(level.width):
-
-                image = lvl_map.get_tile_image(x, y, 0)
-                lvl_id = lvl_map.get_tile_gid(x, y, 0)
-                s += str(lvl_id) + ' '
-                if lvl_id in bad_platform_ids:
-                    all_sprites.add(Platform(x * tile_size, y * tile_size, image, True))
-                    platforms.add(Platform(x * tile_size, y * tile_size, image, True))
-
-                elif lvl_map.get_tile_gid(x, y, 0) in platform_ids:
-                    all_sprites.add(Platform(x * tile_size, y * tile_size, image))
-                    platforms.add(Platform(x * tile_size, y * tile_size, image))
-                else:
-                    all_sprites.add(Platform(x * tile_size, y * tile_size, image))
-            print(s)
-
-    #bad_platform_ids = [              1 lvl
-    #    19, 20, 21, 22
-    #]
-    #platform_ids = [
-    #    2, 3, 4, 8, 9, 10, 12, 13
-    #]
-
-    bad_platform_ids = [
-        12
-    ]
-    platform_ids = [
-        2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-    ]
-
-    lvl_map = pytmx.load_pygame('maps/map3.tmx')
-    height = lvl_map.height
-    width = lvl_map.width
-    tile_size = lvl_map.tilewidth
-    #player_cords = (920, 560) 1 lvl
-    player_cords = (160, 160)
-    player = MainHero(units_group, player_cords[0], player_cords[1], 50, 50, 50, 50)
-    generate_level(lvl_map)
+    lvl_map = pytmx.load_pygame(f'maps/{map_name}')
+    pl_crds = player_cords.copy()
+    pl_crds[0] *= 80
+    pl_crds[1] *= 80
+    player = MainHero(units_group, pl_crds[0], pl_crds[1], 50, 50, 50, 50)
+    generate_level(lvl_map, all_sprites, platforms, bad_plats, good_plats)
     clicked_mouse = False
 
     while running:
@@ -247,7 +226,7 @@ def show_level():
         if not player.on_block:
             player.gravity += 1
             player.rect.y += player.gravity
-            coll = False
+
             for ls in [platforms, blocks]:
                 for elem in ls:
                     if player.rect.colliderect(elem.rect):
@@ -277,7 +256,7 @@ def show_level():
             player.rect.x -= player.speed
         if keys[pygame.K_d] and player.rect.right <= WIDTH:
             player.rect.x += player.speed
-        if keys[pygame.K_SPACE] and player.on_block:
+        if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
             player.gravity -= 15
 
@@ -297,7 +276,6 @@ def show_level():
         for fire in fires:
             fire.update()
 
-        hits = pygame.sprite.groupcollide(platforms, fires, False, True)
         hits = pygame.sprite.groupcollide(blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
@@ -332,6 +310,9 @@ def show_level():
                         player.rect.bottom = elem.rect.top  # Корректируем его позицию
                     elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
                         player.rect.top = elem.rect.bottom  # Корректируем его позицию
+
+        if not blocks:
+            return True
 
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
@@ -396,17 +377,17 @@ def main_page():
         info = FONT_25.render(str(player.hp), True, (255, 0, 0))
         screen.blit(info, (215, 10))
 
-    def is_near_npc(player, npc):
-        distance = ((player.rect.x - npc.x) ** 2 + (player.rect.y - npc.y) ** 2) ** 0.5
+    def is_near_npc(player_, npc_):
+        distance = ((player_.rect.x - npc_.x) ** 2 + (player_.rect.y - npc_.y) ** 2) ** 0.5
         return distance < 75
 
     def render_use():
         text = FONT_25.render('Нажмите "E", чтобы взаимодействовать', True, (0, 0, 0))
         screen.blit(text, (WIDTH - 400, 5))
 
-    def render_dialog(near_npc):
-        dialog = FONT_25.render(near_npc.dialogue, True, (0, 0, 0))
-        screen.blit(dialog, (near_npc.x + 50, near_npc.y - 50))
+    def render_dialog(near_npc_):
+        dialog = FONT_25.render(near_npc_.dialogue, True, (0, 0, 0))
+        screen.blit(dialog, (near_npc_.x + 50, near_npc_.y - 50))
 
     all_sprites = pygame.sprite.Group()
 
@@ -460,8 +441,8 @@ def main_page():
             if near_npc.name == 'Doctor':
                 if player.coins >= 50:
                     player.hp = 100
-            elif near_npc.name == 'Bob':
-                return 1
+            else:
+                return near_npc.name
         elif near_npc is not None:  # Открывает диалог с NPC
             render_use()
             render_dialog(near_npc)
@@ -470,17 +451,50 @@ def main_page():
         clock.tick(FPS)
 
 
-LVL = {None: terminate, 1: show_level}
+# Структура LEVELS
+# LEVELS = {npc_name: [{lvl_name: [[[player_x_tile, player_y_tile], [good_platforms], [bad_platforms]], is_curr_lvl_pased]}, is_npc_levels_passed]}
+
+LEVELS = {
+    'Bob': [{'map1.tmx': [[[12, 7], [2, 3, 4, 8, 9, 10, 12, 13], [19, 20, 21, 22]], False],
+             'map2.tmx': [[[2, 2], [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [12]], False]}, False]
+}
 
 
 def main():
-    GAME_OVER = False
     start_screen()
     running = True
     while running:
-        running_level = LVL[main_page()]
-        if running_level is not None:
-            GAME_OVER = running_level()
+        curr_npc = main_page()
+
+        if curr_npc:
+            for lvl in LEVELS[curr_npc][0].keys():
+                player_cords = LEVELS[curr_npc][0][lvl][0][0]
+                good_plats = LEVELS[curr_npc][0][lvl][0][1]
+                bad_plats = LEVELS[curr_npc][0][lvl][0][2]
+
+                if show_level(lvl, player_cords, good_plats, bad_plats) is True:
+                    LEVELS[curr_npc][0][lvl][1] = True
+                else:
+                    break
+        else:
+            terminate()
+
+        for npc in LEVELS.keys():
+            is_npc_levels_passed = True
+            for lvl in LEVELS[npc][0].keys():
+                if LEVELS[npc][0][lvl][1] is False:
+                    is_npc_levels_passed = False
+                    break
+
+            LEVELS[npc][1] = is_npc_levels_passed
+        are_all_npc_passed = True
+        for npc in LEVELS.keys():
+            if LEVELS[npc][1] is False:
+                are_all_npc_passed = False
+                break
+
+        GAME_OVER = are_all_npc_passed
+
         if GAME_OVER:
             running = False
 
