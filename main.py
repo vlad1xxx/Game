@@ -24,9 +24,30 @@ IMAGES = {'0': 'blocks/number1.png',
           '*': 'blocks/symbol_mult.png'}
 
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 FPS = 60
+
+
+class MainHero(pygame.sprite.Sprite):
+
+    def __init__(self, group, x, y):
+        super().__init__(group)
+        self.image = load_image("player2.png")
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.speed = 8
+        self.gravity = 0
+        self.on_block = True
+
+
+class NPC:
+    def __init__(self, x, y, name, dialogue):
+        self.x = x
+        self.y = y
+        self.name = name
+        self.dialogue = dialogue
 
 
 class Fire(pygame.sprite.Sprite):
@@ -93,53 +114,39 @@ def terminate():
     sys.exit()
 
 
-def generate_random_algebraic_conversions_vertical(count_correct_num, count_incorrect_num, num_group, x, y, symbols):
+def generate_random_algebraic_conversions(count_correct_num, count_incorrect_num, num_group, x, y, direction):
     conversions = []
     random_num = random.choices(['1', '2', '3', '4', '5', '6', '7', '8', '9'], k=count_correct_num)
     for num in random_num:
-        conversions.append(Block(x, 0, True, num_group, num))
-    conversions.insert(random.randrange(1, len(conversions)), Block(0, y, True, num_group, random.choice(symbols)))
+        conversions.append(Block(0, 0, True, num_group, num))
+    conversions.insert(random.randrange(1, len(conversions)), Block(0, 0, True, num_group, random.choice(['+', '-', '*'])))
     line = ''
     for elem in conversions:
         line += elem.value
     result = eval(line)
-    conversions.append(Block(x, 0, True, num_group, '='))
+    conversions.append(Block(0, 0, True, num_group, '='))
     for num in str(result):
-        conversions.append(Block(x, 0, True, num_group, num))
+        conversions.append(Block(0, 0, True, num_group, num))
 
     while count_incorrect_num != 0:
+        flag = True
         incorrect_num = random.choice(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
-        if incorrect_num not in conversions:
-            conversions.insert(random.randrange(count_correct_num + 1), Block(x, 0, False, 1, incorrect_num))
+        for elem in conversions:
+            if incorrect_num == elem.value:
+                flag = False
+                break
+        if flag:
+            conversions.insert(random.randrange(count_correct_num + 1), Block(0, 0, False, 1, incorrect_num))
             count_incorrect_num -= 1
 
-    for i in range(len(conversions)):
-        conversions[i].rect.y = y + i * 100
-    return conversions
-
-
-def generate_random_algebraic_conversions_horizontal(count_correct_num, count_incorrect_num, num_group, x, y, symbols):
-    conversions = []
-    random_num = random.choices(['1', '2', '3', '4', '5', '6', '7', '8', '9'], k=count_correct_num)
-    for num in random_num:
-        conversions.append(Block(0, y, True, num_group, num))
-    conversions.insert(random.randrange(1, len(conversions)), Block(0, y, True, num_group, random.choice(symbols)))
-    line = ''
-    for elem in conversions:
-        line += elem.value
-    result = eval(line)
-    conversions.append(Block(0, y, True, num_group, '='))
-    for num in str(result):
-        conversions.append(Block(0, y, True, num_group, num))
-
-    while count_incorrect_num != 0:
-        incorrect_num = random.choice(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
-        if incorrect_num not in conversions:
-            conversions.insert(random.randrange(count_correct_num + 1), Block(0, y, False, 1, incorrect_num))
-            count_incorrect_num -= 1
-
-    for i in range(len(conversions)):
-        conversions[i].rect.x = x + i * 80
+    if direction == 'horizontal':
+        for i in range(len(conversions)):
+            conversions[i].rect.x = x + i * 80
+            conversions[i].rect.y = y
+    elif direction == 'vertical':
+        for i in range(len(conversions)):
+            conversions[i].rect.x = x
+            conversions[i].rect.y = y + i * 80
     return conversions
 
 
@@ -184,7 +191,7 @@ def generate_level(level, all_group, group_plats, bad_plats, good_plats):
                 all_group.add(Platform(x * level.tilewidth, y * level.tilewidth, image))
 
 
-def show_level(map_name, player_cords, good_plats, bad_plats):
+def show_level(map_name, player_cords, good_plats, bad_plats, pos_blocks):
     running = True
 
     timer = 5
@@ -196,14 +203,15 @@ def show_level(map_name, player_cords, good_plats, bad_plats):
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
 
-    for elem in generate_random_algebraic_conversions_horizontal(2, 1, 1, 12 * 80, 3 * 80, ['+', '-', '*']):
-        blocks.add(elem)
+    for ls in pos_blocks:
+        for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
+            blocks.add(block)
 
     lvl_map = pytmx.load_pygame(f'maps/{map_name}')
     pl_crds = player_cords.copy()
     pl_crds[0] *= 80
     pl_crds[1] *= 80
-    player = MainHero(units_group, pl_crds[0], pl_crds[1], 50, 50, 50, 50)
+    player = MainHero(units_group, pl_crds[0], pl_crds[1])
     generate_level(lvl_map, all_sprites, platforms, bad_plats, good_plats)
     clicked_mouse = False
 
@@ -296,6 +304,8 @@ def show_level(map_name, player_cords, good_plats, bad_plats):
             for block in blocks_need_delete:
                 blocks.remove(block)
 
+        pygame.sprite.groupcollide(fires, platforms, True, False)
+
         for ls in [platforms, blocks]:
             for elem in ls:
                 if player.rect.colliderect(elem.rect):
@@ -314,6 +324,7 @@ def show_level(map_name, player_cords, good_plats, bad_plats):
         if not blocks:
             return True
 
+        print(pygame.mouse.get_pos())
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
         all_sprites.draw(screen)
@@ -322,36 +333,6 @@ def show_level(map_name, player_cords, good_plats, bad_plats):
         blocks.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
-
-
-class MainHero(pygame.sprite.Sprite):
-
-    def __init__(self, group, x, y, name, hp, armor, coins):
-        super().__init__(group)
-        self.image = load_image("player2.png")
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-        self.name = name
-        self.hp = hp
-        self.armor = armor
-        self.coins = coins
-        self.speed = 8
-        self.gravity = 0
-        self.vel = 5
-        self.jump = False
-        self.jump_count = 0
-        self.is_jumping = False
-        self.on_block = True
-
-
-class NPC:
-    def __init__(self, x, y, name, dialogue):
-        self.x = x
-        self.y = y
-        self.name = name
-        self.dialogue = dialogue
-        # self.dialogue_shown = False  # Флаг для отслеживания показа диалога
 
 
 def final_page():
@@ -371,12 +352,6 @@ def final_page():
 
 
 def main_page():
-    def show_info_about_hero():
-        pygame.draw.rect(screen, (255, 0, 0), (10, 10, player.hp * 2, 20))
-        pygame.draw.rect(screen, (0, 0, 0), (7, 7, 203, 23), 3)
-        info = FONT_25.render(str(player.hp), True, (255, 0, 0))
-        screen.blit(info, (215, 10))
-
     def is_near_npc(player_, npc_):
         distance = ((player_.rect.x - npc_.x) ** 2 + (player_.rect.y - npc_.y) ** 2) ** 0.5
         return distance < 75
@@ -398,7 +373,7 @@ def main_page():
         NPC(1084, 724, "Doctor", "Do you want to be treated?")
     ]
 
-    player = MainHero(all_sprites, 500, 500, 'Deyan', 50, 2, 50)
+    player = MainHero(all_sprites, 500, 500)
 
     running = True
     near_npc = None
@@ -438,15 +413,10 @@ def main_page():
                 near_npc = None
 
         if near_npc is not None and keys[pygame.K_e]:
-            if near_npc.name == 'Doctor':
-                if player.coins >= 50:
-                    player.hp = 100
-            else:
-                return near_npc.name
+            return near_npc.name
         elif near_npc is not None:  # Открывает диалог с NPC
             render_use()
             render_dialog(near_npc)
-        show_info_about_hero()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -455,8 +425,8 @@ def main_page():
 # LEVELS = {npc_name: [{lvl_name: [[[player_x_tile, player_y_tile], [good_platforms], [bad_platforms]], is_curr_lvl_pased]}, is_npc_levels_passed]}
 
 LEVELS = {
-    'Bob': [{'map1.tmx': [[[12, 7], [2, 3, 4, 8, 9, 10, 12, 13], [19, 20, 21, 22]], False],
-             'map2.tmx': [[[2, 2], [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [12]], False]}, False]
+    'Bob': [{'map1.tmx': [[[12, 7], [2, 3, 4, 8, 9, 10, 12, 13], [19, 20, 21, 22]], False, [[2, 1, 1, 9, 4, 'horizontal']]],
+             'map2.tmx': [[[2, 2], [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [12]], False, [[2, 1, 1, 12, 3, 'horizontal'], [2, 1, 2, 3, 5, 'vertical']]]}]
 }
 
 
@@ -471,8 +441,9 @@ def main():
                 player_cords = LEVELS[curr_npc][0][lvl][0][0]
                 good_plats = LEVELS[curr_npc][0][lvl][0][1]
                 bad_plats = LEVELS[curr_npc][0][lvl][0][2]
+                pos_blocks = LEVELS[curr_npc][0][lvl][2]
 
-                if show_level(lvl, player_cords, good_plats, bad_plats) is True:
+                if show_level(lvl, player_cords, good_plats, bad_plats, pos_blocks) is True:
                     LEVELS[curr_npc][0][lvl][1] = True
                 else:
                     break
