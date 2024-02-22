@@ -23,6 +23,13 @@ IMAGES = {'0': 'blocks/number1.png',
           '-': 'blocks/symbol_minus.png',
           '*': 'blocks/symbol_mult.png'}
 
+GOOD_PLATFORMS = [
+    9, 10, 12, 13, 16, 20, 22, 28, 29
+]
+BAD_PLATFORMS = [
+    81, 82, 83, 84
+]
+
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
@@ -33,7 +40,7 @@ class MainHero(pygame.sprite.Sprite):
 
     def __init__(self, group, x, y):
         super().__init__(group)
-        self.image = load_image("player2.png")
+        self.image = load_image("character.png")
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -119,7 +126,8 @@ def generate_random_algebraic_conversions(count_correct_num, count_incorrect_num
     random_num = random.choices(['1', '2', '3', '4', '5', '6', '7', '8', '9'], k=count_correct_num)
     for num in random_num:
         conversions.append(Block(0, 0, True, num_group, num))
-    conversions.insert(random.randrange(1, len(conversions)), Block(0, 0, True, num_group, random.choice(['+', '-', '*'])))
+    conversions.insert(random.randrange(1, len(conversions)),
+                       Block(0, 0, True, num_group, random.choice(['+', '-', '*'])))
     line = ''
     for elem in conversions:
         line += elem.value
@@ -136,7 +144,7 @@ def generate_random_algebraic_conversions(count_correct_num, count_incorrect_num
                 flag = False
                 break
         if flag:
-            conversions.insert(random.randrange(count_correct_num + 1), Block(0, 0, False, 1, incorrect_num))
+            conversions.insert(random.randrange(count_correct_num + 1), Block(0, 0, False, num_group, incorrect_num))
             count_incorrect_num -= 1
 
     if direction == 'horizontal':
@@ -172,26 +180,33 @@ def start_screen():
         clock.tick(FPS)
 
 
-def generate_level(level, all_group, group_plats, bad_plats, good_plats):
+def generate_level(level, all_group, group_plats):
     for y in range(level.height):
         s = ''
         for x in range(level.width):
 
             image = level.get_tile_image(x, y, 0)
-            lvl_id = level.get_tile_gid(x, y, 0)
+            lvl_id = level.tiledgidmap[level.get_tile_gid(x, y, 0)]
             s += str(lvl_id) + ' '
-            if lvl_id in bad_plats:
+            if lvl_id in BAD_PLATFORMS:
                 all_group.add(Platform(x * level.tilewidth, y * level.tilewidth, image, True))
                 group_plats.add(Platform(x * level.tilewidth, y * level.tilewidth, image, True))
-
-            elif level.get_tile_gid(x, y, 0) in good_plats:
+            elif lvl_id in GOOD_PLATFORMS:
                 all_group.add(Platform(x * level.tilewidth, y * level.tilewidth, image))
                 group_plats.add(Platform(x * level.tilewidth, y * level.tilewidth, image))
             else:
                 all_group.add(Platform(x * level.tilewidth, y * level.tilewidth, image))
 
 
-def show_level(map_name, player_cords, good_plats, bad_plats, pos_blocks):
+def update_level(lvl, all_group, plat_group):
+    lvl_map = pytmx.load_pygame(f'maps/{lvl}')
+    all_group.empty()
+    plat_group.empty()
+    generate_level(lvl_map, all_group, plat_group)
+
+
+def show_level(map_name, player_cords, pos_blocks, levels_to_update):
+    updated_lvl_index = 0
     running = True
 
     timer = 5
@@ -212,7 +227,7 @@ def show_level(map_name, player_cords, good_plats, bad_plats, pos_blocks):
     pl_crds[0] *= 80
     pl_crds[1] *= 80
     player = MainHero(units_group, pl_crds[0], pl_crds[1])
-    generate_level(lvl_map, all_sprites, platforms, bad_plats, good_plats)
+    generate_level(lvl_map, all_sprites, platforms)
     clicked_mouse = False
 
     while running:
@@ -260,13 +275,13 @@ def show_level(map_name, player_cords, good_plats, bad_plats, pos_blocks):
                 player.rect.y -= 1
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and player.rect.left >= 0:
+        if keys[pygame.K_a]:
             player.rect.x -= player.speed
-        if keys[pygame.K_d] and player.rect.right <= WIDTH:
+        if keys[pygame.K_d]:
             player.rect.x += player.speed
         if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
-            player.gravity -= 15
+            player.gravity -= 20
 
         mouse_buttons = pygame.mouse.get_pressed()
         if not clicked_mouse and mouse_buttons[0]:
@@ -290,19 +305,23 @@ def show_level(map_name, player_cords, good_plats, bad_plats, pos_blocks):
                 return False
 
         blocks_need_delete = []
-        all_correct = True
         for key in hits.keys():
             for block in blocks:
                 if block.num_group == key.num_group:
                     if block.is_correct:
                         blocks_need_delete.append(block)
                     else:
-                        all_correct = False
                         break
 
-        if all_correct:
-            for block in blocks_need_delete:
-                blocks.remove(block)
+        need_to_update = False
+        for block in blocks_need_delete:
+            blocks.remove(block)
+            need_to_update = True
+
+        if need_to_update:
+
+            update_level(levels_to_update[updated_lvl_index], all_sprites, platforms)
+            updated_lvl_index += 1
 
         pygame.sprite.groupcollide(fires, platforms, True, False)
 
@@ -321,10 +340,9 @@ def show_level(map_name, player_cords, good_plats, bad_plats, pos_blocks):
                     elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
                         player.rect.top = elem.rect.bottom  # Корректируем его позицию
 
-        if not blocks:
+        if player.rect.right >= WIDTH or player.rect.left <= 0:
             return True
 
-        print(pygame.mouse.get_pos())
         pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
         all_sprites.draw(screen)
@@ -421,12 +439,10 @@ def main_page():
         clock.tick(FPS)
 
 
-# Структура LEVELS
-# LEVELS = {npc_name: [{lvl_name: [[[player_x_tile, player_y_tile], [good_platforms], [bad_platforms]], is_curr_lvl_pased]}, is_npc_levels_passed]}
-
 LEVELS = {
-    'Bob': [{'map1.tmx': [[[12, 7], [2, 3, 4, 8, 9, 10, 12, 13], [19, 20, 21, 22]], False, [[2, 1, 1, 9, 4, 'horizontal']]],
-             'map2.tmx': [[[2, 2], [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], [12]], False, [[2, 1, 1, 12, 3, 'horizontal'], [2, 1, 2, 3, 5, 'vertical']]]}]
+    'Bob': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
+             'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
+                                            [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False]
 }
 
 
@@ -439,11 +455,10 @@ def main():
         if curr_npc:
             for lvl in LEVELS[curr_npc][0].keys():
                 player_cords = LEVELS[curr_npc][0][lvl][0][0]
-                good_plats = LEVELS[curr_npc][0][lvl][0][1]
-                bad_plats = LEVELS[curr_npc][0][lvl][0][2]
                 pos_blocks = LEVELS[curr_npc][0][lvl][2]
+                levels_to_update = LEVELS[curr_npc][0][lvl][3]
 
-                if show_level(lvl, player_cords, good_plats, bad_plats, pos_blocks) is True:
+                if show_level(lvl, player_cords, pos_blocks, levels_to_update) is True:
                     LEVELS[curr_npc][0][lvl][1] = True
                 else:
                     break
