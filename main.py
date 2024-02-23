@@ -4,7 +4,7 @@ import pygame
 import sys
 import os
 import random
-from settings import FONT_25
+from settings import FONT_25, FONT_50
 
 WIDTH = 1920
 HEIGHT = 1040
@@ -242,11 +242,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
                 if event.key == pygame.K_n:
                     return True
 
-        counter_fps += 1
-        if counter_fps == 60:
-            timer -= 1
-            counter_fps = 0
-
         if not player.on_block:
             player.gravity += 1
             player.rect.y += player.gravity
@@ -311,6 +306,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
                 if block.num_group == key.num_group:
                     if block.is_correct:
                         blocks_need_delete.append(block)
+                        timer = 5
                     else:
                         break
 
@@ -344,12 +340,21 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         if player.rect.right >= WIDTH or player.rect.left <= 0:
             return True
 
-        pygame.draw.rect(screen, (255, 0, 0), (960, 20, timer * 2, 30))
         all_sprites.update()
         all_sprites.draw(screen)
         units_group.update()
         units_group.draw(screen)
         blocks.draw(screen)
+
+        if blocks:
+            counter_fps += 1
+            timer -= 0.01666667
+            pygame.draw.rect(screen, 'grey', (800, 20, 300, 30))
+            pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
+            if counter_fps == 60:
+                counter_fps = 0
+            if timer <= 0:
+                return False
         pygame.display.flip()
         clock.tick(FPS)
 
