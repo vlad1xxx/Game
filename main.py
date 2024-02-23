@@ -24,7 +24,7 @@ IMAGES = {'0': 'blocks/number1.png',
           '*': 'blocks/symbol_mult.png'}
 
 GOOD_PLATFORMS = [
-    9, 10, 12, 13, 16, 20, 22, 28, 29
+    9, 10, 12, 13, 16, 20, 22, 28, 29, 15
 ]
 BAD_PLATFORMS = [
     81, 82, 83, 84
@@ -49,10 +49,11 @@ class MainHero(pygame.sprite.Sprite):
         self.on_block = True
 
 
-class NPC:
+class Door:
     def __init__(self, x, y, name, dialogue):
         self.x = x
         self.y = y
+        self.rect = pygame.Rect(self.x - 80, self.y - 240, 160, 320)
         self.name = name
         self.dialogue = dialogue
 
@@ -370,79 +371,134 @@ def final_page():
 
 
 def main_page():
-    def is_near_npc(player_, npc_):
-        distance = ((player_.rect.x - npc_.x) ** 2 + (player_.rect.y - npc_.y) ** 2) ** 0.5
-        return distance < 75
+    def is_near_door(player_, npc_):
+        return pygame.sprite.collide_rect(player_, npc_)
 
     def render_use():
-        text = FONT_25.render('Нажмите "E", чтобы взаимодействовать', True, (0, 0, 0))
+        text = FONT_25.render('Нажмите "E", чтобы Войти', True, (255, 255, 255))
         screen.blit(text, (WIDTH - 400, 5))
 
     def render_dialog(near_npc_):
-        dialog = FONT_25.render(near_npc_.dialogue, True, (0, 0, 0))
-        screen.blit(dialog, (near_npc_.x + 50, near_npc_.y - 50))
+        dialog = FONT_25.render(near_npc_.dialogue, True, (255, 255, 255))
+        screen.blit(dialog, (near_npc_.x - 60, near_npc_.y - 100))
 
-    all_sprites = pygame.sprite.Group()
-
-    npcs = [
-        NPC(200, 200, "Bob", "Hello, traveler!"),
-        NPC(262, 706, "Alice", "Nice to meet you!"),
-        NPC(1588, 166, "Charlie", "How can I help you?"),
-        NPC(1084, 724, "Doctor", "Do you want to be treated?")
+    doors = [
+        Door(5 * 80, 10 * 80, "Earth", "Пещера Земли"),
+        Door(19 * 80, 10 * 80, "Sand", "Пещера песка"),
+        Door(19 * 80, 4 * 80, "Fire", "Пещера лавы"),
+        Door(5 * 80, 4 * 80, "Water", "Пещера воды")
     ]
 
-    player = MainHero(all_sprites, 500, 500)
-
     running = True
-    near_npc = None
+
+    all_sprites = pygame.sprite.Group()
+    platforms = pygame.sprite.Group()
+    unit_group = pygame.sprite.Group()
+
+    lvl_map = pytmx.load_pygame(f'maps/lobby.tmx')
+
+    player = MainHero(unit_group, 12 * 80, 6 * 80)
+    generate_level(lvl_map, all_sprites, platforms)
 
     while running:
-        screen.fill((255, 255, 255))
-
+        screen.fill('gray')
         for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return None
+                    return False
+                if event.key == pygame.K_n:
+                    return True
 
-        # Перемещение игрока
+        if not player.on_block:
+            player.gravity += 1
+            player.rect.y += player.gravity
+
+            for elem in platforms:
+                if player.rect.colliderect(elem.rect):
+                    if isinstance(elem, Platform):
+                        if elem.isbad:
+                            return False
+                    player.on_block = True
+                    player.rect.y -= player.gravity
+                    player.gravity = 0
+        else:
+            player.rect.y += 1
+            coll = False
+            for elem in platforms:
+
+                if player.rect.colliderect(elem.rect):
+                    coll = True
+                    if isinstance(elem, Platform):
+                        if elem.isbad:
+                            return False
+            if not coll:
+                player.on_block = False
+            else:
+                player.rect.y -= 1
+
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and player.rect.x > 0:
+        if keys[pygame.K_a]:
             player.rect.x -= player.speed
-        if keys[pygame.K_d] and player.rect.x + 30 < WIDTH:
+        if keys[pygame.K_d]:
             player.rect.x += player.speed
-        if keys[pygame.K_w] and player.rect.y > 0:
-            player.rect.y -= player.speed
-        if keys[pygame.K_s] and player.rect.y + 30 < HEIGHT:
-            player.rect.y += player.speed
+        if keys[pygame.K_SPACE] and player.on_block and coll:
+            player.rect.y -= 1
+            player.gravity -= 20
 
-        # Cоздание NPC
-        for npc in npcs:
-            pygame.draw.circle(screen, (0, 0, 255), (npc.x, npc.y), 20)
+        for elem in platforms:
+            if player.rect.colliderect(elem.rect):
+                if isinstance(elem, Platform):
+                    if elem.isbad:
+                        return False
+                if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
+                    player.rect.right = elem.rect.left  # Корректируем его позицию
+                elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
+                    player.rect.left = elem.rect.right  # Корректируем его позицию
+                elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
+                    player.rect.bottom = elem.rect.top  # Корректируем его позицию
+                elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
+                    player.rect.top = elem.rect.bottom  # Корректируем его позицию
 
-        # Создание Игрока
+        all_sprites.update()
         all_sprites.draw(screen)
+        unit_group.draw(screen)
 
-        # Находит ближайшего NPC
-        for npc in npcs:
-            if is_near_npc(player, npc):
-                near_npc = npc
+        if player.rect.right >= WIDTH or player.rect.left <= 0:
+            return True
+
+        for door in doors:
+            if is_near_door(player, door):
+                near_door = door
                 break
             else:
-                near_npc = None
+                near_door = None
 
-        if near_npc is not None and keys[pygame.K_e]:
-            return near_npc.name
-        elif near_npc is not None:  # Открывает диалог с NPC
+        if near_door is not None and keys[pygame.K_e]:
+            return near_door.name
+
+        elif near_door is not None:
             render_use()
-            render_dialog(near_npc)
+            render_dialog(near_door)
+
         pygame.display.flip()
         clock.tick(FPS)
 
 
 LEVELS = {
-    'Bob': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
-             'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
-                                            [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False]
+    'Earth': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
+               'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
+                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
+    'Sand': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
+              'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
+                                             [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
+    'Fire': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
+              'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
+                                             [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
+    'Water': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
+               'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
+                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False]
 }
 
 
