@@ -4,7 +4,7 @@ import pygame
 import sys
 import os
 import random
-from settings import FONT_25, FONT_50
+from settings import FONT_25
 
 WIDTH = 1920
 HEIGHT = 1040
@@ -40,7 +40,7 @@ class MainHero(pygame.sprite.Sprite):
 
     def __init__(self, group, x, y):
         super().__init__(group)
-        self.image = load_image("character.png")
+        self.image = load_image("character2.png")
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
