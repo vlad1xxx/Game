@@ -40,13 +40,128 @@ class MainHero(pygame.sprite.Sprite):
 
     def __init__(self, group, x, y):
         super().__init__(group)
-        self.image = load_image("character.png")
+        self.run_anim_right = [load_image('player_animation/player_run/right/player_run1_right.png'),
+                               load_image('player_animation/player_run/right/player_run2_right.png'),
+                               load_image('player_animation/player_run/right/player_run3_right.png'),
+                               load_image('player_animation/player_run/right/player_run4_right.png'),
+                               load_image('player_animation/player_run/right/player_run5_right.png'),
+                               load_image('player_animation/player_run/right/player_run6_right.png'),
+                               load_image('player_animation/player_run/right/player_run7_right.png'),
+                               load_image('player_animation/player_run/right/player_run8_right.png')]
+
+        self.run_anim_left = [load_image('player_animation/player_run/left/player_run1_left.png'),
+                              load_image('player_animation/player_run/left/player_run2_left.png'),
+                              load_image('player_animation/player_run/left/player_run3_left.png'),
+                              load_image('player_animation/player_run/left/player_run4_left.png'),
+                              load_image('player_animation/player_run/left/player_run5_left.png'),
+                              load_image('player_animation/player_run/left/player_run6_left.png'),
+                              load_image('player_animation/player_run/left/player_run7_left.png'),
+                              load_image('player_animation/player_run/left/player_run8_left.png')]
+
+        self.stay_anim_right = [load_image('player_animation/player_stay/right/player_stay1_right.png'),
+                                load_image('player_animation/player_stay/right/player_stay2_right.png'),
+                                load_image('player_animation/player_stay/right/player_stay3_right.png'),
+                                load_image('player_animation/player_stay/right/player_stay4_right.png'),
+                                load_image('player_animation/player_stay/right/player_stay5_right.png'),
+                                load_image('player_animation/player_stay/right/player_stay6_right.png'),
+                                load_image('player_animation/player_stay/right/player_stay7_right.png'),
+                                load_image('player_animation/player_stay/right/player_stay8_right.png')]
+
+        self.stay_anim_left = [load_image('player_animation/player_stay/left/player_stay1_left.png'),
+                               load_image('player_animation/player_stay/left/player_stay2_left.png'),
+                               load_image('player_animation/player_stay/left/player_stay3_left.png'),
+                               load_image('player_animation/player_stay/left/player_stay4_left.png'),
+                               load_image('player_animation/player_stay/left/player_stay5_left.png'),
+                               load_image('player_animation/player_stay/left/player_stay6_left.png'),
+                               load_image('player_animation/player_stay/left/player_stay7_left.png'),
+                               load_image('player_animation/player_stay/left/player_stay8_left.png')]
+
+        self.jump_anim_right = [load_image('player_animation/player_jump/right/player_jump1_right.png'),
+                                load_image('player_animation/player_jump/right/player_jump2_right.png'),
+                                load_image('player_animation/player_jump/right/player_jump3_right.png'),
+                                load_image('player_animation/player_jump/right/player_jump4_right.png'),
+                                load_image('player_animation/player_jump/right/player_jump5_right.png'),
+                                load_image('player_animation/player_jump/right/player_jump6_right.png'),
+                                load_image('player_animation/player_jump/right/player_jump7_right.png'),
+                                load_image('player_animation/player_jump/right/player_jump8_right.png')]
+
+        self.jump_anim_left = [load_image('player_animation/player_jump/left/player_jump1_left.png'),
+                               load_image('player_animation/player_jump/left/player_jump2_left.png'),
+                               load_image('player_animation/player_jump/left/player_jump3_left.png'),
+                               load_image('player_animation/player_jump/left/player_jump4_left.png'),
+                               load_image('player_animation/player_jump/left/player_jump5_left.png'),
+                               load_image('player_animation/player_jump/left/player_jump6_left.png'),
+                               load_image('player_animation/player_jump/left/player_jump7_left.png'),
+                               load_image('player_animation/player_jump/left/player_jump8_left.png')]
+
+        self.shoot_anim_right = [load_image('player_animation/player_shoot/right/player_shoot1_right.png'),
+                                 load_image('player_animation/player_shoot/right/player_shoot2_right.png'),
+                                 load_image('player_animation/player_shoot/right/player_shoot3_right.png'),
+                                 load_image('player_animation/player_shoot/right/player_shoot4_right.png')]
+
+        self.shoot_anim_left = [load_image('player_animation/player_shoot/left/player_shoot1_left.png'),
+                                load_image('player_animation/player_shoot/left/player_shoot2_left.png'),
+                                load_image('player_animation/player_shoot/left/player_shoot3_left.png'),
+                                load_image('player_animation/player_shoot/left/player_shoot4_left.png')]
+
+        self.image = self.stay_anim_right[0]
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
         self.speed = 8
         self.gravity = 0
         self.on_block = True
+        self.is_moving = False
+        self.walk_index = 0
+        self.is_jumping = False
+        self.jump_index = 0
+        self.stay_index = 0
+        self.clicked_mouse = False
+        self.shoot_index = 0
+        self.direction = 'right'
+
+    def update(self, fires, all_sprites):
+        if self.clicked_mouse:  # Проверяем, стреляет ли игрок
+            mouseX, mouseY = pygame.mouse.get_pos()
+            if mouseX > self.rect.x:
+                self.direction = 'right'
+            elif mouseX < self.rect.x:
+                self.direction = 'left'
+            if self.direction == 'right':
+                self.image = self.shoot_anim_right[self.shoot_index]
+                self.shoot_index = (self.shoot_index + 1) % len(self.shoot_anim_right)
+            elif self.direction == 'left':
+                self.image = self.shoot_anim_left[self.shoot_index]
+                self.shoot_index = (self.shoot_index + 1) % len(self.shoot_anim_left)
+            if self.shoot_index == 2:  # Если анимация выстрела завершилась
+                player_pos = (self.rect.x + self.rect.width // 2, self.rect.y + self.rect.height // 2)
+                angle = math.atan2(mouseY - player_pos[1], mouseX - player_pos[0])
+                fire = Fire(player_pos[0], player_pos[1], angle)
+                fires.add(fire)
+                all_sprites.add(fire)
+            if self.shoot_index == 0:
+                self.clicked_mouse = False
+        elif self.is_jumping:
+            if self.direction == 'right':
+                self.image = self.jump_anim_right[self.jump_index]
+                self.jump_index = (self.jump_index + 1) % len(self.jump_anim_right)
+            elif self.direction == 'left':
+                self.image = self.jump_anim_left[self.jump_index]
+                self.jump_index = (self.jump_index + 1) % len(self.jump_anim_left)
+        elif self.is_moving:
+            if self.direction == 'right':
+                self.image = self.run_anim_right[self.walk_index]
+                self.walk_index = (self.walk_index + 1) % len(self.run_anim_right)
+            elif self.direction == 'left':
+                self.image = self.run_anim_left[self.walk_index]
+                self.walk_index = (self.walk_index + 1) % len(self.run_anim_left)
+        else:
+            if self.direction == 'right':
+                self.image = self.stay_anim_right[self.stay_index]
+                self.stay_index = (self.stay_index + 1) % len(self.stay_anim_right)
+            elif self.direction == 'left':
+                self.image = self.stay_anim_left[self.stay_index]
+                self.stay_index = (self.stay_index + 1) % len(self.stay_anim_left)
 
 
 class Door:
@@ -100,14 +215,6 @@ class Platform(pygame.sprite.Sprite):
         self.rect.topleft = (x, y)
 
 
-def load_level(filename):
-    filename = "data/" + filename
-    with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
-    max_width = max(map(len, level_map))
-    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
-
-
 def load_image(name):
     fullname = os.path.join('images/', name)
     if not os.path.isfile(fullname):
@@ -145,7 +252,7 @@ def generate_random_algebraic_conversions(count_correct_num, count_incorrect_num
                 flag = False
                 break
         if flag:
-            conversions.insert(random.randrange(count_correct_num + 1), Block(0, 0, False, num_group, incorrect_num))
+            conversions.insert(random.randrange(len(conversions) + 1), Block(0, 0, False, num_group, incorrect_num))
             count_incorrect_num -= 1
 
     if direction == 'horizontal':
@@ -229,7 +336,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
     pl_crds[1] *= 80
     player = MainHero(units_group, pl_crds[0], pl_crds[1])
     generate_level(lvl_map, all_sprites, platforms)
-    clicked_mouse = False
 
     while running:
         screen.fill('gray')
@@ -273,23 +379,26 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
             player.rect.x -= player.speed
-        if keys[pygame.K_d]:
+            player.is_moving = True
+            player.direction = 'left'
+        elif keys[pygame.K_d]:
             player.rect.x += player.speed
+            player.is_moving = True
+            player.direction = 'right'
+        else:
+            player.is_moving = False
+            player.walk_index = 0
         if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
             player.gravity -= 20
+            player.is_jumping = True
+        elif player.on_block:
+            player.is_jumping = False
+            player.jump_index = 0
 
         mouse_buttons = pygame.mouse.get_pressed()
-        if not clicked_mouse and mouse_buttons[0]:
-            clicked_mouse = True
-            mouseX, mouseY = pygame.mouse.get_pos()
-            player_pos = (player.rect.x + player.rect.width // 2, player.rect.y + player.rect.height // 2)
-            angle = math.atan2(mouseY - player_pos[1], mouseX - player_pos[0])
-            fire = Fire(player_pos[0], player_pos[1], angle)
-            fires.add(fire)
-            all_sprites.add(fire)
-        if not mouse_buttons[0]:
-            clicked_mouse = False
+        if not player.clicked_mouse and mouse_buttons[0]:
+            player.clicked_mouse = True
 
         # Обновление выстрелов
         for fire in fires:
@@ -316,7 +425,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
             need_to_update = True
 
         if need_to_update:
-
             update_level(levels_to_update[updated_lvl_index], all_sprites, platforms)
             updated_lvl_index += 1
 
@@ -342,19 +450,23 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
 
         all_sprites.update()
         all_sprites.draw(screen)
-        units_group.update()
+        if counter_fps % 8 == 0:
+            player.update(fires, all_sprites)
         units_group.draw(screen)
         blocks.draw(screen)
 
+        counter_fps += 1
         if blocks:
-            counter_fps += 1
             timer -= 0.01666667
             pygame.draw.rect(screen, 'grey', (800, 20, 300, 30))
-            pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
-            if counter_fps == 60:
-                counter_fps = 0
+            if timer < 2:
+                pygame.draw.rect(screen, 'red', (800, 20, 60 * timer, 30))
+            else:
+                pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
             if timer <= 0:
                 return False
+        if counter_fps == 60:
+            counter_fps = 0
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -404,6 +516,7 @@ def main_page():
 
     player = MainHero(unit_group, 12 * 80, 6 * 80)
     generate_level(lvl_map, all_sprites, platforms)
+    counter_fps = 0
 
     while running:
         screen.fill('gray')
@@ -446,11 +559,22 @@ def main_page():
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:
             player.rect.x -= player.speed
-        if keys[pygame.K_d]:
+            player.is_moving = True
+            player.direction = 'left'
+        elif keys[pygame.K_d]:
             player.rect.x += player.speed
+            player.is_moving = True
+            player.direction = 'right'
+        else:
+            player.is_moving = False
+            player.walk_index = 0
         if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
             player.gravity -= 20
+            player.is_jumping = True
+        elif player.on_block:
+            player.is_jumping = False
+            player.jump_index = 0
 
         for elem in platforms:
             if player.rect.colliderect(elem.rect):
@@ -468,6 +592,8 @@ def main_page():
 
         all_sprites.update()
         all_sprites.draw(screen)
+        if counter_fps % 8 == 0:
+            player.update(None, None)
         unit_group.draw(screen)
 
         if player.rect.right >= WIDTH or player.rect.left <= 0:
@@ -486,6 +612,10 @@ def main_page():
         elif near_door is not None:
             render_use()
             render_dialog(near_door)
+
+        counter_fps += 1
+        if counter_fps == 60:
+            counter_fps = 0
 
         pygame.display.flip()
         clock.tick(FPS)
