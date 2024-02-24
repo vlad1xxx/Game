@@ -120,6 +120,7 @@ class MainHero(pygame.sprite.Sprite):
         self.shoot_index = 0
         self.direction = 'right'
         self.is_dash = False
+        self.is_dashing = False
 
     def update(self, fires, all_sprites):
         if self.clicked_mouse:  # Проверяем, стреляет ли игрок
@@ -389,6 +390,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         else:
             player.is_moving = False
             player.walk_index = 0
+
         if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
             player.gravity -= 20
@@ -396,6 +398,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         elif player.on_block:
             player.is_jumping = False
             player.jump_index = 0
+
         if keys[pygame.K_LSHIFT] and player.is_dash:
             player.is_dash = False
             dash_distance = 240  # Distance for dash
@@ -411,6 +414,14 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
 
         elif not keys[pygame.K_LSHIFT]:
             player.is_dash = True
+
+        # Continue the dash movement if the player is dashing
+        if player.is_dashing:
+            if abs(player.rect.x - target_x) <= abs(player.dash_step):
+                player.rect.x = target_x
+                player.is_dashing = False
+            else:
+                player.rect.x += player.dash_step
 
         mouse_buttons = pygame.mouse.get_pressed()
         if not player.clicked_mouse and mouse_buttons[0]:
@@ -586,6 +597,7 @@ def main_page():
         else:
             player.is_moving = False
             player.walk_index = 0
+
         if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
             player.gravity -= 20
@@ -593,14 +605,30 @@ def main_page():
         elif player.on_block:
             player.is_jumping = False
             player.jump_index = 0
+
         if keys[pygame.K_LSHIFT] and player.is_dash:
             player.is_dash = False
-            if player.direction == 'left':
-                player.rect.x -= 150
-            elif player.direction == 'right':
-                player.rect.x += 150
+            dash_distance = 240  # Distance for dash
+            target_x = player.rect.x - dash_distance if player.direction == 'left' else player.rect.x + dash_distance
+
+            # Calculate the distance and direction for the dash
+            dash_distance = abs(target_x - player.rect.x)
+            dash_direction = -1 if target_x < player.rect.x else 1
+
+            # Set up flags for dash state
+            player.is_dashing = True
+            player.dash_step = player.speed * 2 * dash_direction
+
         elif not keys[pygame.K_LSHIFT]:
             player.is_dash = True
+
+        # Continue the dash movement if the player is dashing
+        if player.is_dashing:
+            if abs(player.rect.x - target_x) <= abs(player.dash_step):
+                player.rect.x = target_x
+                player.is_dashing = False
+            else:
+                player.rect.x += player.dash_step
 
         for elem in platforms:
             if player.rect.colliderect(elem.rect):
