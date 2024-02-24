@@ -119,6 +119,7 @@ class MainHero(pygame.sprite.Sprite):
         self.clicked_mouse = False
         self.shoot_index = 0
         self.direction = 'right'
+        self.is_dash = False
 
     def update(self, fires, all_sprites):
         if self.clicked_mouse:  # Проверяем, стреляет ли игрок
@@ -395,6 +396,14 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         elif player.on_block:
             player.is_jumping = False
             player.jump_index = 0
+        if keys[pygame.K_LSHIFT] and player.is_dash:
+            player.is_dash = False
+            if player.direction == 'left':
+                player.rect.x -= 150
+            elif player.direction == 'right':
+                player.rect.x += 150
+        elif not keys[pygame.K_LSHIFT]:
+            player.is_dash = True
 
         mouse_buttons = pygame.mouse.get_pressed()
         if not player.clicked_mouse and mouse_buttons[0]:
@@ -575,6 +584,14 @@ def main_page():
         elif player.on_block:
             player.is_jumping = False
             player.jump_index = 0
+        if keys[pygame.K_LSHIFT] and player.is_dash:
+            player.is_dash = False
+            if player.direction == 'left':
+                player.rect.x -= 150
+            elif player.direction == 'right':
+                player.rect.x += 150
+        elif not keys[pygame.K_LSHIFT]:
+            player.is_dash = True
 
         for elem in platforms:
             if player.rect.colliderect(elem.rect):
