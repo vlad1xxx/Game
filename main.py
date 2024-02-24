@@ -4,7 +4,7 @@ import pygame
 import sys
 import os
 import random
-from settings import FONT_25, FONT_50
+from settings import FONT_25
 
 WIDTH = 1920
 HEIGHT = 1040
@@ -24,10 +24,10 @@ IMAGES = {'0': 'blocks/number1.png',
           '*': 'blocks/symbol_mult.png'}
 
 GOOD_PLATFORMS = [
-    9, 10, 12, 13, 16, 20, 22, 28, 29, 15
+    9, 10, 12, 13, 16, 20, 21, 22, 28, 29, 15
 ]
 BAD_PLATFORMS = [
-    81, 82, 83, 84
+    81, 82, 83, 84, 66, 91
 ]
 
 pygame.init()
@@ -120,7 +120,6 @@ class MainHero(pygame.sprite.Sprite):
         self.shoot_index = 0
         self.direction = 'right'
         self.is_dash = False
-        self.is_dashing = False
 
     def update(self, fires, all_sprites):
         if self.clicked_mouse:  # Проверяем, стреляет ли игрок
@@ -390,7 +389,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         else:
             player.is_moving = False
             player.walk_index = 0
-
         if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
             player.gravity -= 20
@@ -398,7 +396,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         elif player.on_block:
             player.is_jumping = False
             player.jump_index = 0
-
         if keys[pygame.K_LSHIFT] and player.is_dash:
             player.is_dash = False
             dash_distance = 240  # Distance for dash
@@ -414,14 +411,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
 
         elif not keys[pygame.K_LSHIFT]:
             player.is_dash = True
-
-        # Continue the dash movement if the player is dashing
-        if player.is_dashing:
-            if abs(player.rect.x - target_x) <= abs(player.dash_step):
-                player.rect.x = target_x
-                player.is_dashing = False
-            else:
-                player.rect.x += player.dash_step
 
         mouse_buttons = pygame.mouse.get_pressed()
         if not player.clicked_mouse and mouse_buttons[0]:
@@ -452,8 +441,9 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
             need_to_update = True
 
         if need_to_update:
-            update_level(levels_to_update[updated_lvl_index], all_sprites, platforms)
-            updated_lvl_index += 1
+            if levels_to_update:
+                update_level(levels_to_update[updated_lvl_index], all_sprites, platforms)
+                updated_lvl_index += 1
 
         pygame.sprite.groupcollide(fires, platforms, True, False)
 
@@ -472,7 +462,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
                     elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
                         player.rect.top = elem.rect.bottom  # Корректируем его позицию
 
-        if player.rect.right >= WIDTH or player.rect.left <= 0:
+        if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
             return True
 
         all_sprites.update()
@@ -494,6 +484,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
                 return False
         if counter_fps == 60:
             counter_fps = 0
+        pygame.draw.rect(screen, 'red', player.rect, 5)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -595,7 +586,6 @@ def main_page():
         else:
             player.is_moving = False
             player.walk_index = 0
-
         if keys[pygame.K_SPACE] and player.on_block and coll:
             player.rect.y -= 1
             player.gravity -= 20
@@ -603,20 +593,12 @@ def main_page():
         elif player.on_block:
             player.is_jumping = False
             player.jump_index = 0
-
         if keys[pygame.K_LSHIFT] and player.is_dash:
             player.is_dash = False
-            dash_distance = 240  # Distance for dash
-            target_x = player.rect.x - dash_distance if player.direction == 'left' else player.rect.x + dash_distance
-
-            # Calculate the distance and direction for the dash
-            dash_distance = abs(target_x - player.rect.x)
-            dash_direction = -1 if target_x < player.rect.x else 1
-
-            # Set up flags for dash state
-            player.is_dashing = True
-            player.dash_step = player.speed * 2 * dash_direction
-
+            if player.direction == 'left':
+                player.rect.x -= 150
+            elif player.direction == 'right':
+                player.rect.x += 150
         elif not keys[pygame.K_LSHIFT]:
             player.is_dash = True
 
@@ -640,7 +622,7 @@ def main_page():
             player.update(None, None)
         unit_group.draw(screen)
 
-        if player.rect.right >= WIDTH or player.rect.left <= 0:
+        if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
             return True
 
         for door in doors:
@@ -675,9 +657,9 @@ LEVELS = {
     'Fire': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
               'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
-    'Water': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
-               'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
-                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False]
+    'Water': [{'map3.tmx': [[[5, 3]], False, [[2, 1, 1, 8, 0, 'vertical'], [2, 1, 2, 16, 4, 'horizontal']], []],
+               'map4.tmx': [[[3, 0]], False, [[2, 1, 1, 6, 6, 'vertical'], [2, 1, 2, 11, 5, 'horizontal']], []]
+               }, False]
 }
 
 
