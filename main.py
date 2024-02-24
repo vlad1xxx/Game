@@ -121,6 +121,7 @@ class MainHero(pygame.sprite.Sprite):
         self.direction = 'right'
         self.is_dash = False
         self.is_dashing = False
+        self.dash_avaible = True
 
     def update(self, fires, all_sprites):
         if self.clicked_mouse:  # Проверяем, стреляет ли игрок
@@ -352,6 +353,8 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
 
         if not player.on_block:
             player.gravity += 1
+            if player.is_dashing:
+                player.gravity = 0
             player.rect.y += player.gravity
 
             for ls in [platforms, blocks]:
@@ -366,6 +369,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         else:
             player.rect.y += 1
             coll = False
+            player.dash_avaible = True
             for ls in [platforms, blocks]:
                 for elem in ls:
                     if player.rect.colliderect(elem.rect):
@@ -379,11 +383,11 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
                 player.rect.y -= 1
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_a]:
+        if keys[pygame.K_a] and not player.is_dashing:
             player.rect.x -= player.speed
             player.is_moving = True
             player.direction = 'left'
-        elif keys[pygame.K_d]:
+        elif keys[pygame.K_d] and not player.is_dashing:
             player.rect.x += player.speed
             player.is_moving = True
             player.direction = 'right'
@@ -399,8 +403,9 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
             player.is_jumping = False
             player.jump_index = 0
 
-        if keys[pygame.K_LSHIFT] and player.is_dash:
+        if keys[pygame.K_LSHIFT] and player.is_dash and player.dash_avaible:
             player.is_dash = False
+            player.dash_avaible = False
             dash_distance = 240  # Distance for dash
             target_x = player.rect.x - dash_distance if player.direction == 'left' else player.rect.x + dash_distance
 
@@ -466,12 +471,16 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
                             return False
                     if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
                         player.rect.right = elem.rect.left  # Корректируем его позицию
+                        player.is_dashing = False
                     elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
-                        player.rect.left = elem.rect.right  # Корректируем его позицию
+                        player.rect.left = elem.rect.right
+                        player.is_dashing = False# Корректируем его позицию
                     elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
-                        player.rect.bottom = elem.rect.top  # Корректируем его позицию
+                        player.rect.bottom = elem.rect.top
+                        player.is_dashing = False# Корректируем его позицию
                     elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
-                        player.rect.top = elem.rect.bottom  # Корректируем его позицию
+                        player.rect.top = elem.rect.bottom
+                        player.is_dashing = False# Корректируем его позицию
 
         if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
             return True
@@ -560,37 +569,40 @@ def main_page():
 
         if not player.on_block:
             player.gravity += 1
+            if player.is_dashing:
+                player.gravity = 0
             player.rect.y += player.gravity
 
-            for elem in platforms:
-                if player.rect.colliderect(elem.rect):
-                    if isinstance(elem, Platform):
-                        if elem.isbad:
-                            return False
-                    player.on_block = True
-                    player.rect.y -= player.gravity
-                    player.gravity = 0
+            for ls in [platforms]:
+                for elem in ls:
+                    if player.rect.colliderect(elem.rect):
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                return False
+                        player.on_block = True
+                        player.rect.y -= player.gravity
+                        player.gravity = 0
         else:
             player.rect.y += 1
             coll = False
-            for elem in platforms:
-
-                if player.rect.colliderect(elem.rect):
-                    coll = True
-                    if isinstance(elem, Platform):
-                        if elem.isbad:
-                            return False
+            for ls in [platforms]:
+                for elem in ls:
+                    if player.rect.colliderect(elem.rect):
+                        coll = True
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                return False
             if not coll:
                 player.on_block = False
             else:
                 player.rect.y -= 1
 
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_a]:
+        if keys[pygame.K_a] and not player.is_dashing:
             player.rect.x -= player.speed
             player.is_moving = True
             player.direction = 'left'
-        elif keys[pygame.K_d]:
+        elif keys[pygame.K_d] and not player.is_dashing:
             player.rect.x += player.speed
             player.is_moving = True
             player.direction = 'right'
@@ -630,19 +642,24 @@ def main_page():
             else:
                 player.rect.x += player.dash_step
 
-        for elem in platforms:
-            if player.rect.colliderect(elem.rect):
-                if isinstance(elem, Platform):
-                    if elem.isbad:
-                        return False
-                if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
-                    player.rect.right = elem.rect.left  # Корректируем его позицию
-                elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
-                    player.rect.left = elem.rect.right  # Корректируем его позицию
-                elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
-                    player.rect.bottom = elem.rect.top  # Корректируем его позицию
-                elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
-                    player.rect.top = elem.rect.bottom  # Корректируем его позицию
+        for ls in [platforms]:
+            for elem in ls:
+                if player.rect.colliderect(elem.rect):
+                    if isinstance(elem, Platform):
+                        if elem.isbad:
+                            return False
+                    if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
+                        player.rect.right = elem.rect.left  # Корректируем его позицию
+                        player.is_dashing = False
+                    elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
+                        player.rect.left = elem.rect.right
+                        player.is_dashing = False  # Корректируем его позицию
+                    elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
+                        player.rect.bottom = elem.rect.top
+                        player.is_dashing = False  # Корректируем его позицию
+                    elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
+                        player.rect.top = elem.rect.bottom
+                        player.is_dashing = False  # Корректируем его позицию
 
         all_sprites.update()
         all_sprites.draw(screen)
