@@ -8,6 +8,8 @@ from settings import FONT_25
 
 WIDTH = 1920
 HEIGHT = 1040
+TILE_SIZE = 80
+PLAYER_LVL = 0
 IMAGES = {'0': 'blocks/number1.png',
           '1': 'blocks/number2.png',
           '2': 'blocks/number3.png',
@@ -35,10 +37,30 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 FPS = 60
 
+class Upgrade(pygame.sprite.Sprite):
+    def __init__(self, group, x, y, player_lvl):
+        super().__init__(group)
+        if player_lvl == 0:
+            self.image = load_image('upgrade.png')
+            self.dialogue = 'Рывок'
+            self.upg_lvl = 1
+        elif player_lvl == 1:
+            self.image = load_image('upgrade.png')
+            self.dialogue = 'Двойной прыжок'
+            self.upg_lvl = 2
+        else:
+            self.image = load_image('upgrade.png')
+            self.dialogue = 'хз'
+
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+
 
 class MainHero(pygame.sprite.Sprite):
 
-    def __init__(self, group, x, y):
+    def __init__(self, group, x, y, level):
         super().__init__(group)
         self.run_anim_right = [load_image('player_animation/player_run/right/player_run1_right.png'),
                                load_image('player_animation/player_run/right/player_run2_right.png'),
@@ -122,6 +144,7 @@ class MainHero(pygame.sprite.Sprite):
         self.is_dash = False
         self.is_dashing = False
         self.dash_avaible = True
+        self.level = level
 
     def update(self, fires, all_sprites):
         if self.clicked_mouse:  # Проверяем, стреляет ли игрок
@@ -316,7 +339,16 @@ def update_level(lvl, all_group, plat_group):
     generate_level(lvl_map, all_group, plat_group)
 
 
-def show_level(map_name, player_cords, pos_blocks, levels_to_update):
+def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos=None):
+    global PLAYER_LVL
+    def render_use():
+        text = FONT_25.render('Нажмите "E", чтобы Взаимодействовать', True, (255, 255, 255))
+        screen.blit(text, (WIDTH - 400, 5))
+
+    def render_dialog(upg):
+        dialog = FONT_25.render(upg.dialogue, True, (255, 255, 255))
+        screen.blit(dialog, (upg.rect.x - 60, upg.rect.y - 100))
+
     updated_lvl_index = 0
     running = True
 
@@ -326,8 +358,13 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
     all_sprites = pygame.sprite.Group()
     blocks = pygame.sprite.Group()
     units_group = pygame.sprite.Group()
+    upgrade_group = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
+
+    upgrade = None
+    if upgrade_pos:
+        upgrade = Upgrade(upgrade_group, upgrade_pos[0] * TILE_SIZE + 20, upgrade_pos[1] * TILE_SIZE + 20, PLAYER_LVL)
 
     for ls in pos_blocks:
         for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
@@ -337,7 +374,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
     pl_crds = player_cords.copy()
     pl_crds[0] *= 80
     pl_crds[1] *= 80
-    player = MainHero(units_group, pl_crds[0], pl_crds[1])
+    player = MainHero(units_group, pl_crds[0], pl_crds[1], PLAYER_LVL)
     generate_level(lvl_map, all_sprites, platforms)
 
     while running:
@@ -403,7 +440,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
             player.is_jumping = False
             player.jump_index = 0
 
-        if keys[pygame.K_LSHIFT] and player.is_dash and player.dash_avaible:
+        if keys[pygame.K_LSHIFT] and not player.is_dashing and player.dash_avaible and player.level > 0:
             player.is_dash = False
             player.dash_avaible = False
             dash_distance = 240  # Distance for dash
@@ -485,8 +522,15 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
             return True
 
+        if upgrade:
+            if pygame.sprite.collide_rect(player, upgrade):
+                if keys[pygame.K_e]:
+                    PLAYER_LVL = upgrade.upg_lvl
+                    player.level = upgrade.upg_lvl
+
         all_sprites.update()
         all_sprites.draw(screen)
+        upgrade_group.draw(screen)
         if counter_fps % 8 == 0:
             player.update(fires, all_sprites)
         units_group.draw(screen)
@@ -505,6 +549,11 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update):
         if counter_fps == 60:
             counter_fps = 0
         pygame.draw.rect(screen, 'red', player.rect, 5)
+        if upgrade:
+            if pygame.sprite.collide_rect(player, upgrade):
+                render_use()
+                render_dialog(upgrade)
+        print(player.level)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -540,8 +589,8 @@ def main_page():
     doors = [
         Door(5 * 80, 10 * 80, "Earth", "Пещера Земли"),
         Door(19 * 80, 10 * 80, "Sand", "Пещера песка"),
-        Door(19 * 80, 4 * 80, "Fire", "Пещера лавы"),
-        Door(5 * 80, 4 * 80, "Water", "Пещера воды")
+        Door(21 * 80, 2 * 80, "Fire", "Пещера лавы"),
+        Door(3 * 80, 4 * 80, "Water", "Пещера воды")
     ]
 
     running = True
@@ -552,7 +601,7 @@ def main_page():
 
     lvl_map = pytmx.load_pygame(f'maps/lobby.tmx')
 
-    player = MainHero(unit_group, 12 * 80, 6 * 80)
+    player = MainHero(unit_group, 12 * 80, 6 * 80, PLAYER_LVL)
     generate_level(lvl_map, all_sprites, platforms)
     counter_fps = 0
 
@@ -687,7 +736,6 @@ def main_page():
         counter_fps += 1
         if counter_fps == 60:
             counter_fps = 0
-
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -695,7 +743,7 @@ def main_page():
 LEVELS = {
     'Earth': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
                'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
-                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
+                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx'], [10, 8]]}, False],
     'Sand': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
               'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
@@ -719,8 +767,11 @@ def main():
                 player_cords = LEVELS[curr_npc][0][lvl][0][0]
                 pos_blocks = LEVELS[curr_npc][0][lvl][2]
                 levels_to_update = LEVELS[curr_npc][0][lvl][3]
+                upgrade_pos = None
+                if len(LEVELS[curr_npc][0][lvl]) > 4:
+                    upgrade_pos = LEVELS[curr_npc][0][lvl][4]
 
-                if show_level(lvl, player_cords, pos_blocks, levels_to_update) is True:
+                if show_level(lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos) is True:
                     LEVELS[curr_npc][0][lvl][1] = True
                 else:
                     break
