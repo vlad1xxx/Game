@@ -365,8 +365,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     fires = pygame.sprite.Group()
 
     upgrade = None
-    if upgrade_pos:
-        upgrade = Upgrade(upgrade_group, upgrade_pos[0] * TILE_SIZE + 20, upgrade_pos[1] * TILE_SIZE + 20, PLAYER_LVL)
 
     for ls in pos_blocks:
         for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
@@ -378,6 +376,9 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     pl_crds[1] *= 80
     player = MainHero(units_group, pl_crds[0], pl_crds[1], PLAYER_LVL)
     generate_level(lvl_map, all_sprites, platforms)
+
+    if upgrade_pos and player.level == 0:
+        upgrade = Upgrade(upgrade_group, upgrade_pos[0] * TILE_SIZE + 20, upgrade_pos[1] * TILE_SIZE + 20, PLAYER_LVL)
 
     while running:
         screen.fill('gray')
@@ -560,6 +561,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         print(player.level)
         if updated_lvl_index == 2:
             if upgrade:
+
                 upgrade_group.draw(screen)
                 if pygame.sprite.collide_rect(player, upgrade):
                     render_use()
