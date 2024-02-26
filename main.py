@@ -26,7 +26,7 @@ IMAGES = {'0': 'blocks/number1.png',
           '*': 'blocks/symbol_mult.png'}
 
 GOOD_PLATFORMS = [
-    9, 10, 12, 13, 16, 20, 21, 22, 28, 29, 15
+    9, 10, 12, 13, 16, 20, 21, 22, 28, 29, 15, 52, 44, 37, 36
 ]
 BAD_PLATFORMS = [
     81, 82, 83, 84, 66, 91
@@ -194,7 +194,7 @@ class Door:
     def __init__(self, x, y, name, dialogue):
         self.x = x
         self.y = y
-        self.rect = pygame.Rect(self.x - 80, self.y - 240, 160, 320)
+        self.rect = pygame.Rect(self.x - 80, self.y - 160, 160, 240)
         self.name = name
         self.dialogue = dialogue
 
@@ -298,18 +298,399 @@ def all_blocks_correct(blocks_group):
             return False
     return True
 
+def guide():
+    global PLAYER_LVL, FPS
+
+    def render_use():
+        text = FONT_25.render('Нажмите "E", чтобы Взаимодействовать', True, (255, 255, 255))
+        screen.blit(text, (WIDTH - 400, 5))
+
+    def render_dialog(dialogs, completed, pos):
+        x = pos[0]
+        y = pos[1]
+        if completed:
+            color = 'green'
+        else:
+            color = 'white'
+        if type(dialogs) is list:
+            for i in dialogs:
+                dialog = FONT_50.render(i, True, color)
+                screen.blit(dialog, (x, y))
+                y += 50
+        elif type(dialogs) is str:
+            dialog = FONT_50.render(dialogs, True, color)
+            screen.blit(dialog, (x, y))
+
+    updated_lvl_index = 0
+    level_to_update = pytmx.load_pygame('maps/guide.1.tmx')
+    running = True
+    tasks = {
+        'Нажмите клавишу A чтобы двигаться влево': [pygame.K_a, False, (100, 100)],
+        'Нажмите клавишу D чтобы двигаться вправо': [pygame.K_d, False, (100, 200)],
+        'Нажмите клавишу SPACE чтобы прыгнуть': [pygame.K_SPACE, False, (100, 300)]
+    }
+
+    examples_passed = None
+
+    timer = 10
+    counter_fps = 0
+    slow_motion = False
+
+    all_sprites = pygame.sprite.Group()
+    blocks = pygame.sprite.Group()
+    units_group = pygame.sprite.Group()
+    platforms = pygame.sprite.Group()
+    fires = pygame.sprite.Group()
+
+    upgrade = None
+
+    lvl_map = pytmx.load_pygame(f'maps/guide.tmx')
+
+    player = MainHero(units_group, 12 * TILE_SIZE, 7 * TILE_SIZE, PLAYER_LVL)
+    generate_level(lvl_map, all_sprites, platforms)
+
+    render_incorrect_block_ = False
+    render_examples = False
+    render_timer = False
+    final_exam = False
+    final_update = False
+    is_guide_over = False
+    render_death = False
+    is_dead = False
+
+    while running:
+        screen.fill('gray')
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                render_death = False
+                if event.key == pygame.K_ESCAPE:
+                    return False
+                if event.key == pygame.K_n:
+                    return True
+
+        if not player.on_block:
+            player.gravity += 1
+            if player.is_dashing:
+                player.gravity = 0
+            player.rect.y += player.gravity
+
+            for ls in [platforms, blocks]:
+                for elem in ls:
+                    if player.rect.colliderect(elem.rect):
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                is_dead = True
+                        player.on_block = True
+                        player.rect.y -= player.gravity
+                        player.gravity = 0
+        else:
+            player.rect.y += 1
+            coll = False
+            player.dash_avaible = True
+            for ls in [platforms, blocks]:
+                for elem in ls:
+                    if player.rect.colliderect(elem.rect):
+                        coll = True
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                is_dead = True
+            if not coll:
+                player.on_block = False
+            else:
+                player.rect.y -= 1
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a] and not player.is_dashing:
+            player.rect.x -= player.speed
+            player.is_moving = True
+            player.direction = 'left'
+        elif keys[pygame.K_d] and not player.is_dashing:
+            player.rect.x += player.speed
+            player.is_moving = True
+            player.direction = 'right'
+        else:
+            player.is_moving = False
+            player.walk_index = 0
+
+        if keys[pygame.K_SPACE] and player.on_block and coll:
+            player.rect.y -= 1
+            player.gravity -= 20
+            player.is_jumping = True
+        elif player.on_block:
+            player.is_jumping = False
+            player.jump_index = 0
+
+        if keys[pygame.K_LSHIFT] and not player.is_dashing and player.dash_avaible and player.level > 0:
+            player.is_dash = False
+            player.dash_avaible = False
+            if slow_motion:
+                slow_motion = False
+                FPS = 60
+            dash_distance = 240  # Distance for dash
+            target_x = player.rect.x - dash_distance if player.direction == 'left' else player.rect.x + dash_distance
+
+            # Calculate the distance and direction for the dash
+            dash_distance = abs(target_x - player.rect.x)
+            dash_direction = -1 if target_x < player.rect.x else 1
+
+            # Set up flags for dash state
+            player.is_dashing = True
+            player.dash_step = player.speed * 2 * dash_direction
+
+        elif not keys[pygame.K_LSHIFT]:
+            player.is_dash = True
+
+        # Continue the dash movement if the player is dashing
+        if player.is_dashing:
+            if abs(player.rect.x - target_x) <= abs(player.dash_step):
+                player.rect.x = target_x
+                player.is_dashing = False
+            else:
+                player.rect.x += player.dash_step
+
+        mouse_buttons = pygame.mouse.get_pressed()
+        if not player.clicked_mouse and mouse_buttons[0]:
+            player.clicked_mouse = True
+
+        # Обновление выстрелов
+        for fire in fires:
+            fire.update()
+        update_example = False
+        hits = pygame.sprite.groupcollide(blocks, fires, True, True)
+        for key in hits.keys():
+            if key.is_correct:
+                if final_exam:
+                    for block in blocks:
+                        blocks.remove(block)
+                    final_exam = False
+                    final_update = False
+                    for s in all_sprites:
+                        all_sprites.remove(s)
+                    for p in platforms:
+                        platforms.remove(p)
+                    generate_level(lvl_map, all_sprites, platforms)
+                    render_incorrect_block_ = True
+                    examples_passed = 0
+                    update_example = True
+                    blocks_need_delete.clear()
+                else:
+                    render_incorrect_block_ = True
+                    render_examples = False
+                    examples_passed = 0
+                    for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
+                        blocks.add(block)
+            elif not key.is_correct:
+                for block in blocks:
+                    blocks.remove(block)
+                examples_passed += 1
+                if examples_passed < 4:
+                    render_examples = True
+                    update_example = True
+                elif not final_exam:
+                    for s in all_sprites:
+                        all_sprites.remove(s)
+                    for p in platforms:
+                        platforms.remove(p)
+                    generate_level(level_to_update, all_sprites, platforms)
+                    final_exam = True
+                    final_update = True
+                if final_exam:
+                    final_exam = False
+                    for block in blocks:
+                        blocks.remove(block)
+                    is_guide_over = True
+                render_timer = False
+                timer = 10
+
+        blocks_need_delete = []
+        for key in hits.keys():
+            for block in blocks:
+                if block.num_group == key.num_group:
+                    if block.is_correct:
+                        blocks_need_delete.append(block)
+                        timer = 10
+                    else:
+                        break
+
+        need_to_update = False
+        for block in blocks_need_delete:
+            blocks.remove(block)
+            need_to_update = True
+
+        pygame.sprite.groupcollide(fires, platforms, True, False)
+
+        for ls in [platforms, blocks]:
+            for elem in ls:
+                if player.rect.colliderect(elem.rect):
+                    if isinstance(elem, Platform):
+                        if elem.isbad:
+                            is_dead = True
+                    if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
+                        player.rect.right = elem.rect.left  # Корректируем его позицию
+                        player.is_dashing = False
+                    elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
+                        player.rect.left = elem.rect.right
+                        player.is_dashing = False  # Корректируем его позицию
+                    elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
+                        player.rect.bottom = elem.rect.top
+                        player.is_dashing = False  # Корректируем его позицию
+                    elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
+                        player.rect.top = elem.rect.bottom
+                        player.is_dashing = False  # Корректируем его позицию
+
+        if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
+            return False
+
+        all_sprites.update()
+        all_sprites.draw(screen)
+        if counter_fps % 8 == 0:
+            player.update(fires, all_sprites)
+        units_group.draw(screen)
+        blocks.draw(screen)
+
+        counter_fps += 1
+        if blocks:
+            timer -= 0.01666667
+            pygame.draw.rect(screen, 'grey', (800, 20, 300, 30))
+            if timer < 2:
+                pygame.draw.rect(screen, 'red', (800, 20, 60 * timer, 30))
+            else:
+                pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
+            if timer <= 0:
+                render_timer = True
+                render_examples = False
+                render_incorrect_block_ = False
+                for block in blocks:
+                    blocks.remove(block)
+                for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
+                    blocks.add(block)
+                timer = 10
+                examples_passed = 0
+        if counter_fps == 60:
+            counter_fps = 0
+
+        task_need_to_delete = True
+        if render_death:
+            render_dialog(['Ваш персонаж не умеет плавать!', 'Нажмите любую кнопу чтобы продолжить'
+                           ],
+                          False, (100, 100))
+
+        if not render_death:
+            for task in tasks.keys():
+                if keys[tasks[task][0]]:
+                    tasks[task][1] = True
+                if not tasks[task][1]:
+                    task_need_to_delete = False
+                render_dialog(task, tasks[task][1], tasks[task][2])
+            if not tasks:
+                task_need_to_delete = False
+
+            if task_need_to_delete:
+                tasks.clear()
+                for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
+                    blocks.add(block)
+                examples_passed = 0
+
+        if update_example:
+            for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
+                blocks.add(block)
+
+        if render_timer:
+            render_dialog(['По истечении таймера вы проигрываете!',
+                           'Попробуйте ещё раз'],
+                          False, (100, 100))
+
+        if examples_passed == 0 and not render_incorrect_block_ and not render_examples and not render_timer and not tasks:
+            render_dialog(['Это математические блоки, они будут мешать вам во время прохождения уровней.',
+                           'Чтобы их уничтожить, нужно выстрелить с помощью ЛКМ в тот блок который противоречит равенству.'], False, (100, 100))
+
+        if render_incorrect_block_ and not render_examples:
+            render_dialog(['Вы выстрелили в верный блок и нарушили равенство!',
+                           'Попробуйте еще раз'],
+                          False, (100, 100))
+            examples_passed = 0
+        if render_examples:
+            render_dialog([f'Так держать! уничтожьте еще {4 - examples_passed} блока.',
+                           ],
+                          False, (100, 100))
+        if examples_passed == 4:
+            final_exam = True
+            render_examples = False
+            render_incorrect_block_ = False
+            render_timer = False
+
+        if final_exam:
+            render_dialog([f'А вы довольно хорошо справились!',
+                           'Но математические блоки иногда могут преграждать вам дорогу',
+                           'Разрушьте последний математический блок чтобы покинуть обучение'
+                           ],
+                          False, (100, 100))
+        if final_update:
+            for block in generate_random_algebraic_conversions(2, 1, 1, 23 * TILE_SIZE, 1 * TILE_SIZE, 'vertical'):
+                blocks.add(block)
+            final_update = False
+
+        if is_guide_over:
+            render_dialog([f'Поздравляю вы прошли обучение!'],
+                          False, (100, 100))
+
+        if is_dead:
+            render_death = True
+            for unit in units_group:
+                units_group.remove(unit)
+            player = MainHero(units_group, 12 * TILE_SIZE, 7 * TILE_SIZE, PLAYER_LVL)
+            render_incorrect_block_ = False
+            render_examples = False
+            render_timer = False
+            final_exam = False
+            final_update = False
+            is_guide_over = False
+            is_dead = False
+            for s in all_sprites:
+                all_sprites.remove(s)
+            for p in platforms:
+                platforms.remove(p)
+            generate_level(lvl_map, all_sprites, platforms)
+            for block in blocks:
+                blocks.remove(block)
+
+            tasks = {
+                'Нажмите клавишу A чтобы двигаться влево': [pygame.K_a, False, (100, 100)],
+                'Нажмите клавишу D чтобы двигаться вправо': [pygame.K_d, False, (100, 200)],
+                'Нажмите клавишу SPACE чтобы прыгнуть': [pygame.K_SPACE, False, (100, 300)]
+            }
+
+        pygame.draw.rect(screen, 'red', player.rect, 5)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 
 def start_screen():
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    fon = pygame.transform.scale(load_image('fon.jpg'), (1920, 1080))
     screen.blit(fon, (0, 0))
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                m_x = pos[0]
+                m_y = pos[1]
+
+                if event.button == 1 and 190 < m_x < 611 and 190 < m_y < 409:
+                    return True
+
+                if event.button == 1 and 190 < m_x < 760 and 490 < m_y < 709:
+                    return guide()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    terminate()
+
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -599,9 +980,9 @@ def main_page():
         screen.blit(dialog, (near_npc_.x - 60, near_npc_.y - 100))
 
     doors = [
-        Door(5 * 80, 10 * 80, "Earth", "Пещера Земли"),
-        Door(19 * 80, 10 * 80, "Sand", "Пещера песка"),
-        Door(21 * 80, 2 * 80, "Fire", "Пещера лавы"),
+        Door(5 * 80, 10 * 80, "Earth", "Подземелье земли"),
+        Door(19 * 80, 10 * 80, "Sand", "Пещера огня"),
+        Door(21 * 80, 3 * 80, "Fire", "Облачное подземелье"),
         Door(3 * 80, 4 * 80, "Water", "Пещера воды")
     ]
 
@@ -626,7 +1007,7 @@ def main_page():
                 if event.key == pygame.K_ESCAPE:
                     return False
                 if event.key == pygame.K_n:
-                    return True
+                    return False
 
         if not player.on_block:
             player.gravity += 1
@@ -748,6 +1129,7 @@ def main_page():
         counter_fps += 1
         if counter_fps == 60:
             counter_fps = 0
+
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -770,45 +1152,47 @@ LEVELS = {
 
 
 def main():
-    start_screen()
-    running = True
-    while running:
-        curr_npc = main_page()
+    game_not_over = True
+    while game_not_over:
 
-        if curr_npc:
-            for lvl in LEVELS[curr_npc][0].keys():
-                player_cords = LEVELS[curr_npc][0][lvl][0][0]
-                pos_blocks = LEVELS[curr_npc][0][lvl][2]
-                levels_to_update = LEVELS[curr_npc][0][lvl][3]
-                upgrade_pos = None
-                if len(LEVELS[curr_npc][0][lvl]) > 4:
-                    upgrade_pos = LEVELS[curr_npc][0][lvl][4]
+        running = start_screen()
+        while running:
+            curr_npc = main_page()
 
-                if show_level(lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos) is True:
-                    LEVELS[curr_npc][0][lvl][1] = True
-                else:
+            if curr_npc:
+                for lvl in LEVELS[curr_npc][0].keys():
+                    player_cords = LEVELS[curr_npc][0][lvl][0][0]
+                    pos_blocks = LEVELS[curr_npc][0][lvl][2]
+                    levels_to_update = LEVELS[curr_npc][0][lvl][3]
+                    upgrade_pos = None
+                    if len(LEVELS[curr_npc][0][lvl]) > 4:
+                        upgrade_pos = LEVELS[curr_npc][0][lvl][4]
+
+                    if show_level(lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos) is True:
+                        LEVELS[curr_npc][0][lvl][1] = True
+                    else:
+                        break
+            else:
+                running = False
+
+            for npc in LEVELS.keys():
+                is_npc_levels_passed = True
+                for lvl in LEVELS[npc][0].keys():
+                    if LEVELS[npc][0][lvl][1] is False:
+                        is_npc_levels_passed = False
+                        break
+
+                LEVELS[npc][1] = is_npc_levels_passed
+            are_all_npc_passed = True
+            for npc in LEVELS.keys():
+                if LEVELS[npc][1] is False:
+                    are_all_npc_passed = False
                     break
-        else:
-            terminate()
 
-        for npc in LEVELS.keys():
-            is_npc_levels_passed = True
-            for lvl in LEVELS[npc][0].keys():
-                if LEVELS[npc][0][lvl][1] is False:
-                    is_npc_levels_passed = False
-                    break
+            GAME_OVER = are_all_npc_passed
 
-            LEVELS[npc][1] = is_npc_levels_passed
-        are_all_npc_passed = True
-        for npc in LEVELS.keys():
-            if LEVELS[npc][1] is False:
-                are_all_npc_passed = False
-                break
-
-        GAME_OVER = are_all_npc_passed
-
-        if GAME_OVER:
-            running = False
+            if GAME_OVER:
+                running = False
 
     final_page()
     pygame.quit()
