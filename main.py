@@ -26,10 +26,10 @@ IMAGES = {'0': 'blocks/number1.png',
           '*': 'blocks/symbol_mult.png'}
 
 GOOD_PLATFORMS = [
-    9, 10, 12, 13, 16, 20, 21, 22, 28, 29, 15, 52, 44, 37, 36
+    9, 10, 12, 13, 16, 20, 21, 22, 28, 29, 15, 52, 44, 37, 36, 72, 78
 ]
 BAD_PLATFORMS = [
-    81, 82, 83, 84, 66, 91
+    81, 82, 83, 84, 66, 91, 64
 ]
 
 pygame.init()
@@ -601,6 +601,12 @@ def guide():
         if blocks:
             timer.update()
             if timer.timer <= 0:
+                if final_exam:
+                    final_exam = False
+                    platforms.empty()
+                    all_sprites.empty()
+                    generate_level(lvl_map, all_sprites, platforms)
+                    final_update = False
                 render_timer = True
                 render_examples = False
                 render_incorrect_block_ = False
@@ -774,7 +780,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     updated_lvl_index = 0
     running = True
 
-    timer = 5
     counter_fps = 0
 
     all_sprites = pygame.sprite.Group()
@@ -788,6 +793,9 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         for ls in pos_blocks:
             for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
                 blocks.add(block)
+    else:
+        count_destroyed_blocks = 0
+        score = 0
     upgrade = None
 
     lvl_map = pytmx.load_pygame(f'maps/{map_name}')
@@ -852,7 +860,13 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                 if block.num_group == key.num_group:
                     if block.is_correct:
                         blocks_need_delete.append(block)
+                        if endless:
+                            score += 10
+                            count_destroyed_blocks += 1
+                            score += int(timer.timer * 5)
+                            print(score)
                         timer.timer = timer.max_seconds
+
                     else:
                         break
 
@@ -1012,10 +1026,10 @@ LEVELS = {
     'Earth': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
                'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
                                               [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx'], [[5, 6], 1]]},
-              False],
+              False, False],
     'Cloud': [{'cloud_map1.tmx': [[[6, 11]], False, [[2, 1, 1, 2, 0, 'horizontal']], []],
                'cloud_map2.tmx': [[[4, 10]], False, [[2, 1, 1, 9, 0, 'vertical']], [], [[21, 2], 2]],
-               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], []]}, False],
+               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], []]}, False, False],
     'Fire': [{'endless_map.tmx': [[[11, 11]], False, [[2, 1, 1, 8, 0, 'horizontal'],
                                                       [2, 1, 1, 7, 1, 'vertical'],
                                                       [2, 1, 1, 16, 1, 'vertical'],
