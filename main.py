@@ -430,6 +430,10 @@ def all_blocks_correct(blocks_group):
 def guide():
     global PLAYER_LVL, FPS
 
+    def render_use():
+        text = FONT_25.render('Нажмите "E", чтобы Взаимодействовать', True, (255, 255, 255))
+        screen.blit(text, (WIDTH - 400, 5))
+
     def render_dialog(dialogs, completed, pos):
         x = pos[0]
         y = pos[1]
@@ -446,6 +450,7 @@ def guide():
             dialog = FONT_50.render(dialogs, True, color)
             screen.blit(dialog, (x, y))
 
+    updated_lvl_index = 0
     level_to_update = pytmx.load_pygame('maps/guide.1.tmx')
     running = True
     tasks = {
@@ -458,12 +463,15 @@ def guide():
 
     timer = 10
     counter_fps = 0
+    slow_motion = False
 
     all_sprites = pygame.sprite.Group()
     blocks = pygame.sprite.Group()
     units_group = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
+
+    upgrade = None
 
     lvl_map = pytmx.load_pygame(f'maps/guide.tmx')
 
@@ -491,7 +499,7 @@ def guide():
                 if event.key == pygame.K_n:
                     return True
 
-        player.update_movement([blocks, platforms])
+        player.update_movement([platforms, blocks])
 
         # Обновление выстрелов
         for fire in fires:
@@ -518,8 +526,7 @@ def guide():
                     render_incorrect_block_ = True
                     render_examples = False
                     examples_passed = 0
-                    for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE,
-                                                                       'horizontal'):
+                    for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
                         blocks.add(block)
             elif not key.is_correct:
                 for block in blocks:
@@ -565,18 +572,18 @@ def guide():
         all_sprites.update()
         all_sprites.draw(screen)
         if counter_fps % 8 == 0:
-            player.update(fires, all_sprites, True)
+            player.update(fires, all_sprites)
         units_group.draw(screen)
         blocks.draw(screen)
 
         counter_fps += 1
         if blocks:
             timer -= 0.01666667
-            pygame.draw.rect(screen, 'grey', (700, 20, 600, 30))
+            pygame.draw.rect(screen, 'grey', (800, 20, 300, 30))
             if timer < 2:
-                pygame.draw.rect(screen, 'red', (700, 20, 60 * timer, 30))
+                pygame.draw.rect(screen, 'red', (800, 20, 60 * timer, 30))
             else:
-                pygame.draw.rect(screen, 'yellow', (700, 20, 60 * timer, 30))
+                pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
             if timer <= 0:
                 render_timer = True
                 render_examples = False
@@ -592,7 +599,7 @@ def guide():
 
         task_need_to_delete = True
         if render_death:
-            render_dialog(['Ваш персонаж не умеет плавать!', 'Нажмите любую кнопку чтобы продолжить'
+            render_dialog(['Ваш персонаж не умеет плавать!', 'Нажмите любую кнопу чтобы продолжить'
                            ],
                           False, (100, 100))
 
@@ -623,19 +630,18 @@ def guide():
                            'Попробуйте ещё раз'],
                           False, (100, 100))
 
-        if not examples_passed and not render_incorrect_block_ and not render_examples and not render_timer and not tasks:
+        if examples_passed == 0 and not render_incorrect_block_ and not render_examples and not render_timer and not tasks:
             render_dialog(['Это математические блоки, они будут мешать вам во время прохождения уровней.',
                            'Чтобы их уничтожить, нужно выстрелить с помощью ЛКМ в тот блок который противоречит '
                            'равенству.'], False, (100, 100))
 
         if render_incorrect_block_ and not render_examples:
-            render_dialog(['Вы выстрелили в неверный блок и нарушили равенство!',
+            render_dialog(['Вы выстрелили в верный блок и нарушили равенство!',
                            'Попробуйте еще раз'],
                           False, (100, 100))
             examples_passed = 0
-            render_timer = False
         if render_examples:
-            render_dialog([f'Так держать! Уничтожьте еще {4 - examples_passed} блока.',
+            render_dialog([f'Так держать! уничтожьте еще {4 - examples_passed} блока.',
                            ],
                           False, (100, 100))
         if examples_passed == 4:
@@ -689,6 +695,7 @@ def guide():
 
         pygame.display.flip()
         clock.tick(FPS)
+
 
 
 def start_screen():
