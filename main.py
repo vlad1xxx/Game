@@ -370,6 +370,26 @@ class Platform(pygame.sprite.Sprite):
         self.rect.topleft = (x, y)
 
 
+class Timer:
+    def __init__(self, seconds, x, y):
+        self.max_seconds = seconds
+        self.x = x
+        self.y = y
+        self.timer = seconds
+        self.counter_fps = 0
+
+    def update(self):
+        self.timer -= 0.01666667
+        pygame.draw.rect(screen, 'grey', (self.x, self.y, 60 * self.max_seconds, 30))
+        if self.timer < 2:
+            pygame.draw.rect(screen, 'red', (self.x, self.y, 60 * self.timer, 30))
+        else:
+            pygame.draw.rect(screen, 'yellow', (self.x, self.y, 60 * self.timer, 30))
+        if self.timer <= 0:
+            return False
+        return True
+
+
 def load_image(name):
     fullname = os.path.join('images/', name)
     if not os.path.isfile(fullname):
@@ -462,9 +482,7 @@ def guide():
 
     examples_passed = None
 
-    timer = 10
     counter_fps = 0
-    slow_motion = False
 
     all_sprites = pygame.sprite.Group()
     blocks = pygame.sprite.Group()
@@ -477,6 +495,7 @@ def guide():
     lvl_map = pytmx.load_pygame(f'maps/guide.tmx')
 
     player = MainHero(units_group, 12 * TILE_SIZE, 7 * TILE_SIZE, PLAYER_LVL)
+    timer = Timer(10, 800, 20)
     generate_level(lvl_map, all_sprites, platforms)
 
     render_incorrect_block_ = False
@@ -528,7 +547,8 @@ def guide():
                     render_incorrect_block_ = True
                     render_examples = False
                     examples_passed = 0
-                    for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
+                    for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE,
+                                                                       'horizontal'):
                         blocks.add(block)
             elif not key.is_correct:
                 for block in blocks:
@@ -552,7 +572,7 @@ def guide():
                     is_guide_over = True
 
                 render_timer = False
-                timer = 10
+                timer.timer = timer.max_seconds
 
         blocks_need_delete = []
         for key in hits.keys():
@@ -560,7 +580,7 @@ def guide():
                 if block.num_group == key.num_group:
                     if block.is_correct:
                         blocks_need_delete.append(block)
-                        timer = 10
+                        timer.timer = timer.max_seconds
                     else:
                         break
 
@@ -581,21 +601,8 @@ def guide():
 
         counter_fps += 1
         if blocks:
-            timer -= 0.01666667
-            pygame.draw.rect(screen, 'grey', (800, 20, 300, 30))
-            if timer < 2:
-                pygame.draw.rect(screen, 'red', (800, 20, 60 * timer, 30))
-            else:
-                pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
-            if timer <= 0:
-                if final_exam:
-                    final_exam = False
-                    for s in all_sprites:
-                        all_sprites.remove(s)
-                    for p in platforms:
-                        platforms.remove(p)
-                    generate_level(lvl_map, all_sprites, platforms)
-                    final_update = False
+            timer.update()
+            if timer.timer <= 0:
                 render_timer = True
                 render_examples = False
                 render_incorrect_block_ = False
@@ -603,7 +610,7 @@ def guide():
                     blocks.remove(block)
                 for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
                     blocks.add(block)
-                timer = 10
+                timer.timer = timer.max_seconds
                 examples_passed = 0
         if counter_fps == 60:
             counter_fps = 0
@@ -707,7 +714,6 @@ def guide():
         clock.tick(FPS)
 
 
-
 def start_screen():
     fon = pygame.transform.scale(load_image('fon.jpg'), (1920, 1080))
     screen.blit(fon, (0, 0))
@@ -759,12 +765,8 @@ def update_level(lvl, all_group, plat_group):
     generate_level(lvl_map, all_group, plat_group)
 
 
-def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos=None):
+def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos=None, endless=False):
     global PLAYER_LVL, FPS
-
-    def render_use():
-        text = FONT_25.render('Нажмите "E", чтобы Взаимодействовать', True, (255, 255, 255))
-        screen.blit(text, (WIDTH - 400, 5))
 
     def render_dialog(upg):
         dialog = FONT_50.render(upg.dialogue, True, (255, 255, 255))
@@ -783,23 +785,29 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
 
+    if not endless:
+        for ls in pos_blocks:
+            for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
+                blocks.add(block)
     upgrade = None
-
-    for ls in pos_blocks:
-        for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
-            blocks.add(block)
 
     lvl_map = pytmx.load_pygame(f'maps/{map_name}')
     pl_crds = player_cords.copy()
     pl_crds[0] *= 80
     pl_crds[1] *= 80
     player = MainHero(units_group, pl_crds[0], pl_crds[1], PLAYER_LVL)
+
+    if endless:
+        timer = Timer(8, 25, 20)
+    else:
+        timer = Timer(5, 800, 20)
     generate_level(lvl_map, all_sprites, platforms)
-    render_double_jump = None
     if upgrade_pos and upgrade_pos[1] == 0:
-        upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20, PLAYER_LVL)
+        upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
+                          PLAYER_LVL)
     elif upgrade_pos and upgrade_pos[1] == 1:
-        upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20, PLAYER_LVL)
+        upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
+                          PLAYER_LVL)
 
     while running:
         screen.fill('gray')
@@ -811,6 +819,11 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                     return False
                 if event.key == pygame.K_n:
                     return True
+
+        if endless and not blocks:
+            ls = random.choice(pos_blocks)
+            for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
+                blocks.add(block)
 
         status = player.update_movement([blocks, platforms])
         if not status:
@@ -834,7 +847,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                 if block.num_group == key.num_group:
                     if block.is_correct:
                         blocks_need_delete.append(block)
-                        timer = 5
+                        timer.timer = timer.max_seconds
                     else:
                         break
 
@@ -860,7 +873,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
 
         if player.slow_motion:
             FPS = 10
-        print(player.level)
         all_sprites.update()
         all_sprites.draw(screen)
         if counter_fps % 8 == 0:
@@ -870,22 +882,13 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
 
         counter_fps += 1
         if blocks:
-            timer -= 0.01666667
-            pygame.draw.rect(screen, 'grey', (800, 20, 300, 30))
-            if timer < 2:
-                pygame.draw.rect(screen, 'red', (800, 20, 60 * timer, 30))
-            else:
-                pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
-            if timer <= 0:
+            if not timer.update():
                 return False
-        if counter_fps == 60:
-            counter_fps = 0
         pygame.draw.rect(screen, 'red', player.rect, 5)
         if updated_lvl_index == 2 and player.level == 0:
             if upgrade:
                 upgrade_group.draw(screen)
                 if pygame.sprite.collide_rect(player, upgrade):
-
                     render_dialog(upgrade)
         if player.slow_motion:
             if upgrade:
@@ -893,7 +896,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
 
         if player.level == 2 and updated_lvl_index != 2:
             if upgrade:
-
                 render_dialog(upgrade)
         if player.level == 1 and updated_lvl_index != 2:
             if upgrade:
@@ -999,16 +1001,20 @@ LEVELS = {
     'Earth': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
                'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
                                               [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx'], [[5, 6], 1]]},
-              False],
-    'Sand': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
-              'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
-                                             [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
+              False, False],
     'Fire': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
               'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
-                                             [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False],
+                                             [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False,
+             False],
+    'Sand': [{'endless_map.tmx': [[[11, 11]], False, [[2, 1, 1, 8, 0, 'horizontal'],
+                                                      [2, 1, 1, 7, 1, 'vertical'],
+                                                      [2, 1, 1, 16, 1, 'vertical'],
+                                                      [2, 1, 1, 1, 5, 'vertical'],
+                                                      [2, 1, 1, 22, 5, 'vertical']], []]}, False, True],
     'Water': [{'map3.tmx': [[[5, 3]], False, [[2, 1, 1, 8, 0, 'vertical'], [2, 1, 2, 16, 4, 'horizontal']], []],
-               'map4.tmx': [[[3, 0]], False, [[2, 1, 1, 6, 6, 'vertical'], [2, 1, 2, 11, 5, 'horizontal']], [], [[22, 8], 1]]
-               }, False]
+               'map4.tmx': [[[3, 0]], False, [[2, 1, 1, 6, 6, 'vertical'], [2, 1, 2, 11, 5, 'horizontal']], [],
+                            [[22, 8], 1]]
+               }, False, False]
 }
 
 
@@ -1025,11 +1031,13 @@ def main():
                     player_cords = LEVELS[curr_npc][0][lvl][0][0]
                     pos_blocks = LEVELS[curr_npc][0][lvl][2]
                     levels_to_update = LEVELS[curr_npc][0][lvl][3]
+                    endless = LEVELS[curr_npc][2]
                     upgrade_pos = None
                     if len(LEVELS[curr_npc][0][lvl]) > 4:
                         upgrade_pos = LEVELS[curr_npc][0][lvl][4]
 
-                    if show_level(lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos) is True:
+                    if show_level(lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos,
+                                  endless=endless) is True:
                         LEVELS[curr_npc][0][lvl][1] = True
                     else:
                         break
