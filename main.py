@@ -505,6 +505,7 @@ def guide():
         for fire in fires:
             fire.update()
         update_example = False
+        final_update = False
         hits = pygame.sprite.groupcollide(blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
@@ -535,7 +536,7 @@ def guide():
                 if examples_passed < 4:
                     render_examples = True
                     update_example = True
-                elif not final_exam:
+                elif not final_exam and examples_passed == 4:
                     for s in all_sprites:
                         all_sprites.remove(s)
                     for p in platforms:
@@ -548,6 +549,7 @@ def guide():
                     for block in blocks:
                         blocks.remove(block)
                     is_guide_over = True
+
                 render_timer = False
                 timer = 10
 
@@ -572,7 +574,7 @@ def guide():
         all_sprites.update()
         all_sprites.draw(screen)
         if counter_fps % 8 == 0:
-            player.update(fires, all_sprites)
+            player.update(fires, all_sprites, True)
         units_group.draw(screen)
         blocks.draw(screen)
 
@@ -585,6 +587,14 @@ def guide():
             else:
                 pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
             if timer <= 0:
+                if final_exam:
+                    final_exam = False
+                    for s in all_sprites:
+                        all_sprites.remove(s)
+                    for p in platforms:
+                        platforms.remove(p)
+                    generate_level(lvl_map, all_sprites, platforms)
+                    final_update = False
                 render_timer = True
                 render_examples = False
                 render_incorrect_block_ = False
@@ -659,9 +669,8 @@ def guide():
         if final_update:
             for block in generate_random_algebraic_conversions(2, 1, 1, 23 * TILE_SIZE, 1 * TILE_SIZE, 'vertical'):
                 blocks.add(block)
-            final_update = False
 
-        if is_guide_over:
+        if is_guide_over and not final_exam:
             render_dialog([f'Поздравляю вы прошли обучение!'],
                           False, (100, 100))
 
