@@ -1041,12 +1041,32 @@ LEVELS = {
                }, False, False]
 }
 
+def show_story():
+
+    all_sprites = pygame.sprite.Group()
+    platforms = pygame.sprite.Group()
+
+    lvl_map = pytmx.load_pygame(f'maps/tower.tmx')
+    generate_level(lvl_map, all_sprites, platforms)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return
+
+        all_sprites.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
 
 def main():
     game_not_over = True
     while game_not_over:
 
         running = start_screen()
+        show_story()
         while running:
             curr_npc = main_page()
 
