@@ -42,15 +42,15 @@ class Upgrade(pygame.sprite.Sprite):
     def __init__(self, group, x, y, player_lvl):
         super().__init__(group)
         if player_lvl == 0:
-            self.image = load_image('upgrade.png')
+            self.image = load_image('upgrade_dash.png')
             self.dialogue = 'Нажмите Shift для Рывка'
             self.upg_lvl = 1
         elif player_lvl == 1:
-            self.image = load_image('upgrade.png')
+            self.image = load_image('upgrade_dash.png')
             self.dialogue = 'Двойной прыжок'
             self.upg_lvl = 2
         else:
-            self.image = load_image('upgrade.png')
+            self.image = load_image('upgrade_dash.png')
             self.dialogue = 'хз'
 
         self.rect = self.image.get_rect()
@@ -145,28 +145,156 @@ class MainHero(pygame.sprite.Sprite):
         self.is_dashing = False
         self.dash_avaible = True
         self.level = level
+        self.slow_motion = False
+        self.coll = False
+        self.target_x = 0
+        self.double_jump_available = True
+        self.space_pressed = False
 
-    def update(self, fires, all_sprites):
+    def update_movement(self, sprites):
+        global FPS
+        if not self.on_block:
+            self.gravity += 1
+            if self.is_dashing:
+                self.gravity = 0
+            self.rect.y += self.gravity
+
+            for ls in sprites:
+                for elem in ls:
+                    if self.rect.colliderect(elem.rect):
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                return False
+                        self.on_block = True
+                        self.rect.y -= self.gravity
+                        self.gravity = 0
+        else:
+            self.rect.y += 1
+            self.coll = False
+            self.dash_avaible = True
+            for ls in sprites:
+                for elem in ls:
+                    if self.rect.colliderect(elem.rect):
+                        self.coll = True
+                        if isinstance(elem, Platform):
+                            if elem.isbad:
+                                return False
+            if not self.coll:
+                self.on_block = False
+            else:
+                self.rect.y -= 1
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a] and not self.is_dashing:
+            self.rect.x -= self.speed
+            self.is_moving = True
+            self.direction = 'left'
+        elif keys[pygame.K_d] and not self.is_dashing:
+            self.rect.x += self.speed
+            self.is_moving = True
+            self.direction = 'right'
+        else:
+            self.is_moving = False
+            self.walk_index = 0
+
+        if keys[pygame.K_SPACE] and not self.space_pressed:  # Проверяем, что клавиша пробела не была нажата ранее
+            if self.on_block and self.coll:
+                self.rect.y -= 1
+                self.gravity = -20
+                self.is_jumping = True
+                self.double_jump_available = True
+            elif self.double_jump_available:
+                self.rect.y -= 1
+                self.gravity = -20
+                self.is_jumping = True
+                self.double_jump_available = False
+            self.space_pressed = True
+        elif self.on_block:
+            self.is_jumping = False
+            self.jump_index = 0
+        if not keys[pygame.K_SPACE]:
+            self.space_pressed = False
+
+        if keys[pygame.K_LSHIFT] and not self.is_dashing and self.dash_avaible and self.level > 0:
+            self.is_dash = False
+            self.dash_avaible = False
+            self.dash_distance = 240  # Distance for dash
+            self.target_x = self.rect.x - self.dash_distance if self.direction == 'left' else self.rect.x + self.dash_distance
+
+            # Calculate the distance and direction for the dash
+            self.dash_distance = abs(self.target_x - self.rect.x)
+            if self.target_x < self.rect.x:
+                self.dash_direction = -1
+            else:
+                self.dash_direction = 1
+
+            # Set up flags for dash state
+            self.is_dashing = True
+            self.dash_step = self.speed * 2 * self.dash_direction
+
+        elif not keys[pygame.K_LSHIFT]:
+            self.is_dash = True
+
+        # Continue the dash movement if the player is dashing
+        if self.is_dashing:
+            self.slow_motion = False
+            FPS = 60
+            if abs(self.rect.x - self.target_x) <= abs(self.dash_step):
+                self.rect.x = self.target_x
+                self.is_dashing = False
+            else:
+                self.rect.x += self.dash_step
+
+        mouse_buttons = pygame.mouse.get_pressed()
+        if not self.clicked_mouse and mouse_buttons[0]:
+            self.clicked_mouse = True
+
+        for ls in sprites:
+            for elem in ls:
+                if self.rect.colliderect(elem.rect):
+                    if isinstance(elem, Platform):
+                        if elem.isbad:
+                            return False
+                    if self.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
+                        self.rect.right = elem.rect.left  # Корректируем его позицию
+                        self.is_dashing = False
+                    elif self.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
+                        self.rect.left = elem.rect.right
+                        self.is_dashing = False  # Корректируем его позицию
+                    elif self.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
+                        self.rect.bottom = elem.rect.top
+                        self.is_dashing = False  # Корректируем его позицию
+                    elif self.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
+                        self.rect.top = elem.rect.bottom
+                        self.is_dashing = False  # Корректируем его позицию
+        return True
+
+    def update(self, fires, all_sprites, fire_available):
+        if pygame.mouse.get_pressed()[0]:
+            self.clicked_mouse = True
+        if not fire_available:
+            self.clicked_mouse = False
         if self.clicked_mouse:  # Проверяем, стреляет ли игрок
-            mouseX, mouseY = pygame.mouse.get_pos()
-            if mouseX > self.rect.x:
-                self.direction = 'right'
-            elif mouseX < self.rect.x:
-                self.direction = 'left'
-            if self.direction == 'right':
-                self.image = self.shoot_anim_right[self.shoot_index]
-                self.shoot_index = (self.shoot_index + 1) % len(self.shoot_anim_right)
-            elif self.direction == 'left':
-                self.image = self.shoot_anim_left[self.shoot_index]
-                self.shoot_index = (self.shoot_index + 1) % len(self.shoot_anim_left)
-            if self.shoot_index == 2:  # Если анимация выстрела завершилась
-                player_pos = (self.rect.x + self.rect.width // 2, self.rect.y + self.rect.height // 2)
-                angle = math.atan2(mouseY - player_pos[1], mouseX - player_pos[0])
-                fire = Fire(player_pos[0], player_pos[1], angle)
-                fires.add(fire)
-                all_sprites.add(fire)
-            if self.shoot_index == 0:
-                self.clicked_mouse = False
+            if fires is not None:
+                mouseX, mouseY = pygame.mouse.get_pos()
+                if mouseX > self.rect.x:
+                    self.direction = 'right'
+                elif mouseX < self.rect.x:
+                    self.direction = 'left'
+                if self.direction == 'right':
+                    self.image = self.shoot_anim_right[self.shoot_index]
+                    self.shoot_index = (self.shoot_index + 1) % len(self.shoot_anim_right)
+                elif self.direction == 'left':
+                    self.image = self.shoot_anim_left[self.shoot_index]
+                    self.shoot_index = (self.shoot_index + 1) % len(self.shoot_anim_left)
+                if self.shoot_index == 2:  # Если анимация выстрела завершилась
+                    player_pos = (self.rect.x + self.rect.width // 2, self.rect.y + self.rect.height // 2)
+                    angle = math.atan2(mouseY - player_pos[1], mouseX - player_pos[0])
+                    fire = Fire(player_pos[0], player_pos[1], angle)
+                    fires.add(fire)
+                    all_sprites.add(fire)
+                if self.shoot_index == 0:
+                    self.clicked_mouse = False
         elif self.is_jumping:
             if self.direction == 'right':
                 self.image = self.jump_anim_right[self.jump_index]
@@ -298,12 +426,9 @@ def all_blocks_correct(blocks_group):
             return False
     return True
 
+
 def guide():
     global PLAYER_LVL, FPS
-
-    def render_use():
-        text = FONT_25.render('Нажмите "E", чтобы Взаимодействовать', True, (255, 255, 255))
-        screen.blit(text, (WIDTH - 400, 5))
 
     def render_dialog(dialogs, completed, pos):
         x = pos[0]
@@ -321,7 +446,6 @@ def guide():
             dialog = FONT_50.render(dialogs, True, color)
             screen.blit(dialog, (x, y))
 
-    updated_lvl_index = 0
     level_to_update = pytmx.load_pygame('maps/guide.1.tmx')
     running = True
     tasks = {
@@ -334,15 +458,12 @@ def guide():
 
     timer = 10
     counter_fps = 0
-    slow_motion = False
 
     all_sprites = pygame.sprite.Group()
     blocks = pygame.sprite.Group()
     units_group = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
-
-    upgrade = None
 
     lvl_map = pytmx.load_pygame(f'maps/guide.tmx')
 
@@ -370,89 +491,7 @@ def guide():
                 if event.key == pygame.K_n:
                     return True
 
-        if not player.on_block:
-            player.gravity += 1
-            if player.is_dashing:
-                player.gravity = 0
-            player.rect.y += player.gravity
-
-            for ls in [platforms, blocks]:
-                for elem in ls:
-                    if player.rect.colliderect(elem.rect):
-                        if isinstance(elem, Platform):
-                            if elem.isbad:
-                                is_dead = True
-                        player.on_block = True
-                        player.rect.y -= player.gravity
-                        player.gravity = 0
-        else:
-            player.rect.y += 1
-            coll = False
-            player.dash_avaible = True
-            for ls in [platforms, blocks]:
-                for elem in ls:
-                    if player.rect.colliderect(elem.rect):
-                        coll = True
-                        if isinstance(elem, Platform):
-                            if elem.isbad:
-                                is_dead = True
-            if not coll:
-                player.on_block = False
-            else:
-                player.rect.y -= 1
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and not player.is_dashing:
-            player.rect.x -= player.speed
-            player.is_moving = True
-            player.direction = 'left'
-        elif keys[pygame.K_d] and not player.is_dashing:
-            player.rect.x += player.speed
-            player.is_moving = True
-            player.direction = 'right'
-        else:
-            player.is_moving = False
-            player.walk_index = 0
-
-        if keys[pygame.K_SPACE] and player.on_block and coll:
-            player.rect.y -= 1
-            player.gravity -= 20
-            player.is_jumping = True
-        elif player.on_block:
-            player.is_jumping = False
-            player.jump_index = 0
-
-        if keys[pygame.K_LSHIFT] and not player.is_dashing and player.dash_avaible and player.level > 0:
-            player.is_dash = False
-            player.dash_avaible = False
-            if slow_motion:
-                slow_motion = False
-                FPS = 60
-            dash_distance = 240  # Distance for dash
-            target_x = player.rect.x - dash_distance if player.direction == 'left' else player.rect.x + dash_distance
-
-            # Calculate the distance and direction for the dash
-            dash_distance = abs(target_x - player.rect.x)
-            dash_direction = -1 if target_x < player.rect.x else 1
-
-            # Set up flags for dash state
-            player.is_dashing = True
-            player.dash_step = player.speed * 2 * dash_direction
-
-        elif not keys[pygame.K_LSHIFT]:
-            player.is_dash = True
-
-        # Continue the dash movement if the player is dashing
-        if player.is_dashing:
-            if abs(player.rect.x - target_x) <= abs(player.dash_step):
-                player.rect.x = target_x
-                player.is_dashing = False
-            else:
-                player.rect.x += player.dash_step
-
-        mouse_buttons = pygame.mouse.get_pressed()
-        if not player.clicked_mouse and mouse_buttons[0]:
-            player.clicked_mouse = True
+        player.update_movement([blocks, platforms])
 
         # Обновление выстрелов
         for fire in fires:
@@ -479,7 +518,8 @@ def guide():
                     render_incorrect_block_ = True
                     render_examples = False
                     examples_passed = 0
-                    for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
+                    for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE,
+                                                                       'horizontal'):
                         blocks.add(block)
             elif not key.is_correct:
                 for block in blocks:
@@ -514,31 +554,10 @@ def guide():
                     else:
                         break
 
-        need_to_update = False
         for block in blocks_need_delete:
             blocks.remove(block)
-            need_to_update = True
 
         pygame.sprite.groupcollide(fires, platforms, True, False)
-
-        for ls in [platforms, blocks]:
-            for elem in ls:
-                if player.rect.colliderect(elem.rect):
-                    if isinstance(elem, Platform):
-                        if elem.isbad:
-                            is_dead = True
-                    if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
-                        player.rect.right = elem.rect.left  # Корректируем его позицию
-                        player.is_dashing = False
-                    elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
-                        player.rect.left = elem.rect.right
-                        player.is_dashing = False  # Корректируем его позицию
-                    elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
-                        player.rect.bottom = elem.rect.top
-                        player.is_dashing = False  # Корректируем его позицию
-                    elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
-                        player.rect.top = elem.rect.bottom
-                        player.is_dashing = False  # Корректируем его позицию
 
         if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
             return False
@@ -546,18 +565,18 @@ def guide():
         all_sprites.update()
         all_sprites.draw(screen)
         if counter_fps % 8 == 0:
-            player.update(fires, all_sprites)
+            player.update(fires, all_sprites, True)
         units_group.draw(screen)
         blocks.draw(screen)
 
         counter_fps += 1
         if blocks:
             timer -= 0.01666667
-            pygame.draw.rect(screen, 'grey', (800, 20, 300, 30))
+            pygame.draw.rect(screen, 'grey', (700, 20, 600, 30))
             if timer < 2:
-                pygame.draw.rect(screen, 'red', (800, 20, 60 * timer, 30))
+                pygame.draw.rect(screen, 'red', (700, 20, 60 * timer, 30))
             else:
-                pygame.draw.rect(screen, 'yellow', (800, 20, 60 * timer, 30))
+                pygame.draw.rect(screen, 'yellow', (700, 20, 60 * timer, 30))
             if timer <= 0:
                 render_timer = True
                 render_examples = False
@@ -573,9 +592,11 @@ def guide():
 
         task_need_to_delete = True
         if render_death:
-            render_dialog(['Ваш персонаж не умеет плавать!', 'Нажмите любую кнопу чтобы продолжить'
+            render_dialog(['Ваш персонаж не умеет плавать!', 'Нажмите любую кнопку чтобы продолжить'
                            ],
                           False, (100, 100))
+
+        keys = pygame.key.get_pressed()
 
         if not render_death:
             for task in tasks.keys():
@@ -602,17 +623,19 @@ def guide():
                            'Попробуйте ещё раз'],
                           False, (100, 100))
 
-        if examples_passed == 0 and not render_incorrect_block_ and not render_examples and not render_timer and not tasks:
+        if not examples_passed and not render_incorrect_block_ and not render_examples and not render_timer and not tasks:
             render_dialog(['Это математические блоки, они будут мешать вам во время прохождения уровней.',
-                           'Чтобы их уничтожить, нужно выстрелить с помощью ЛКМ в тот блок который противоречит равенству.'], False, (100, 100))
+                           'Чтобы их уничтожить, нужно выстрелить с помощью ЛКМ в тот блок который противоречит '
+                           'равенству.'], False, (100, 100))
 
         if render_incorrect_block_ and not render_examples:
-            render_dialog(['Вы выстрелили в верный блок и нарушили равенство!',
+            render_dialog(['Вы выстрелили в неверный блок и нарушили равенство!',
                            'Попробуйте еще раз'],
                           False, (100, 100))
             examples_passed = 0
+            render_timer = False
         if render_examples:
-            render_dialog([f'Так держать! уничтожьте еще {4 - examples_passed} блока.',
+            render_dialog([f'Так держать! Уничтожьте еще {4 - examples_passed} блока.',
                            ],
                           False, (100, 100))
         if examples_passed == 4:
@@ -666,7 +689,6 @@ def guide():
 
         pygame.display.flip()
         clock.tick(FPS)
-
 
 
 def start_screen():
@@ -736,7 +758,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
 
     timer = 5
     counter_fps = 0
-    slow_motion = False
 
     all_sprites = pygame.sprite.Group()
     blocks = pygame.sprite.Group()
@@ -772,89 +793,12 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                 if event.key == pygame.K_n:
                     return True
 
-        if not player.on_block:
-            player.gravity += 1
-            if player.is_dashing:
-                player.gravity = 0
-            player.rect.y += player.gravity
+        status = player.update_movement([blocks, platforms])
+        if not status:
+            return False
 
-            for ls in [platforms, blocks]:
-                for elem in ls:
-                    if player.rect.colliderect(elem.rect):
-                        if isinstance(elem, Platform):
-                            if elem.isbad:
-                                return False
-                        player.on_block = True
-                        player.rect.y -= player.gravity
-                        player.gravity = 0
-        else:
-            player.rect.y += 1
-            coll = False
-            player.dash_avaible = True
-            for ls in [platforms, blocks]:
-                for elem in ls:
-                    if player.rect.colliderect(elem.rect):
-                        coll = True
-                        if isinstance(elem, Platform):
-                            if elem.isbad:
-                                return False
-            if not coll:
-                player.on_block = False
-            else:
-                player.rect.y -= 1
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and not player.is_dashing:
-            player.rect.x -= player.speed
-            player.is_moving = True
-            player.direction = 'left'
-        elif keys[pygame.K_d] and not player.is_dashing:
-            player.rect.x += player.speed
-            player.is_moving = True
-            player.direction = 'right'
-        else:
-            player.is_moving = False
-            player.walk_index = 0
-
-        if keys[pygame.K_SPACE] and player.on_block and coll:
-            player.rect.y -= 1
-            player.gravity -= 20
-            player.is_jumping = True
-        elif player.on_block:
-            player.is_jumping = False
-            player.jump_index = 0
-
-        if keys[pygame.K_LSHIFT] and not player.is_dashing and player.dash_avaible and player.level > 0:
-            player.is_dash = False
-            player.dash_avaible = False
-            if slow_motion:
-                slow_motion = False
-                FPS = 60
-            dash_distance = 240  # Distance for dash
-            target_x = player.rect.x - dash_distance if player.direction == 'left' else player.rect.x + dash_distance
-
-            # Calculate the distance and direction for the dash
-            dash_distance = abs(target_x - player.rect.x)
-            dash_direction = -1 if target_x < player.rect.x else 1
-
-            # Set up flags for dash state
-            player.is_dashing = True
-            player.dash_step = player.speed * 2 * dash_direction
-
-        elif not keys[pygame.K_LSHIFT]:
-            player.is_dash = True
-
-        # Continue the dash movement if the player is dashing
-        if player.is_dashing:
-            if abs(player.rect.x - target_x) <= abs(player.dash_step):
-                player.rect.x = target_x
-                player.is_dashing = False
-            else:
-                player.rect.x += player.dash_step
-
-        mouse_buttons = pygame.mouse.get_pressed()
-        if not player.clicked_mouse and mouse_buttons[0]:
-            player.clicked_mouse = True
+        if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
+            return True
 
         # Обновление выстрелов
         for fire in fires:
@@ -887,42 +831,20 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
 
         pygame.sprite.groupcollide(fires, platforms, True, False)
 
-        for ls in [platforms, blocks]:
-            for elem in ls:
-                if player.rect.colliderect(elem.rect):
-                    if isinstance(elem, Platform):
-                        if elem.isbad:
-                            return False
-                    if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
-                        player.rect.right = elem.rect.left  # Корректируем его позицию
-                        player.is_dashing = False
-                    elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
-                        player.rect.left = elem.rect.right
-                        player.is_dashing = False  # Корректируем его позицию
-                    elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
-                        player.rect.bottom = elem.rect.top
-                        player.is_dashing = False  # Корректируем его позицию
-                    elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
-                        player.rect.top = elem.rect.bottom
-                        player.is_dashing = False  # Корректируем его позицию
-
-        if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
-            return True
-
         if upgrade:
             if pygame.sprite.collide_rect(player, upgrade):
                 PLAYER_LVL = upgrade.upg_lvl
                 player.level = upgrade.upg_lvl
-                slow_motion = True
+                player.slow_motion = True
                 upgrade_group.empty()
 
-        if slow_motion:
+        if player.slow_motion:
             FPS = 10
 
         all_sprites.update()
         all_sprites.draw(screen)
         if counter_fps % 8 == 0:
-            player.update(fires, all_sprites)
+            player.update(fires, all_sprites, True)
         units_group.draw(screen)
         blocks.draw(screen)
 
@@ -939,10 +861,8 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         if counter_fps == 60:
             counter_fps = 0
         pygame.draw.rect(screen, 'red', player.rect, 5)
-        print(player.level)
         if updated_lvl_index == 2:
             if upgrade:
-
                 upgrade_group.draw(screen)
                 if pygame.sprite.collide_rect(player, upgrade):
                     render_use()
@@ -1009,108 +929,15 @@ def main_page():
                 if event.key == pygame.K_n:
                     return False
 
-        if not player.on_block:
-            player.gravity += 1
-            if player.is_dashing:
-                player.gravity = 0
-            player.rect.y += player.gravity
-
-            for ls in [platforms]:
-                for elem in ls:
-                    if player.rect.colliderect(elem.rect):
-                        if isinstance(elem, Platform):
-                            if elem.isbad:
-                                return False
-                        player.on_block = True
-                        player.rect.y -= player.gravity
-                        player.gravity = 0
-        else:
-            player.rect.y += 1
-            coll = False
-            for ls in [platforms]:
-                for elem in ls:
-                    if player.rect.colliderect(elem.rect):
-                        coll = True
-                        if isinstance(elem, Platform):
-                            if elem.isbad:
-                                return False
-            if not coll:
-                player.on_block = False
-            else:
-                player.rect.y -= 1
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and not player.is_dashing:
-            player.rect.x -= player.speed
-            player.is_moving = True
-            player.direction = 'left'
-        elif keys[pygame.K_d] and not player.is_dashing:
-            player.rect.x += player.speed
-            player.is_moving = True
-            player.direction = 'right'
-        else:
-            player.is_moving = False
-            player.walk_index = 0
-
-        if keys[pygame.K_SPACE] and player.on_block and coll:
-            player.rect.y -= 1
-            player.gravity -= 20
-            player.is_jumping = True
-        elif player.on_block:
-            player.is_jumping = False
-            player.jump_index = 0
-
-        if keys[pygame.K_LSHIFT] and player.is_dash:
-            player.is_dash = False
-            dash_distance = 240  # Distance for dash
-            target_x = player.rect.x - dash_distance if player.direction == 'left' else player.rect.x + dash_distance
-
-            # Calculate the distance and direction for the dash
-            dash_distance = abs(target_x - player.rect.x)
-            dash_direction = -1 if target_x < player.rect.x else 1
-
-            # Set up flags for dash state
-            player.is_dashing = True
-            player.dash_step = player.speed * 2 * dash_direction
-
-        elif not keys[pygame.K_LSHIFT]:
-            player.is_dash = True
-
-        # Continue the dash movement if the player is dashing
-        if player.is_dashing:
-            if abs(player.rect.x - target_x) <= abs(player.dash_step):
-                player.rect.x = target_x
-                player.is_dashing = False
-            else:
-                player.rect.x += player.dash_step
-
-        for ls in [platforms]:
-            for elem in ls:
-                if player.rect.colliderect(elem.rect):
-                    if isinstance(elem, Platform):
-                        if elem.isbad:
-                            return False
-                    if player.rect.centerx < elem.rect.left:  # Персонаж движется справа налево
-                        player.rect.right = elem.rect.left  # Корректируем его позицию
-                        player.is_dashing = False
-                    elif player.rect.centerx > elem.rect.right:  # Персонаж движется слева направо
-                        player.rect.left = elem.rect.right
-                        player.is_dashing = False  # Корректируем его позицию
-                    elif player.rect.centery < elem.rect.top:  # Персонаж движется снизу вверх
-                        player.rect.bottom = elem.rect.top
-                        player.is_dashing = False  # Корректируем его позицию
-                    elif player.rect.centery > elem.rect.bottom:  # Персонаж движется сверху вниз
-                        player.rect.top = elem.rect.bottom
-                        player.is_dashing = False  # Корректируем его позицию
+        status = player.update_movement([platforms])
+        if not status:
+            return False
 
         all_sprites.update()
         all_sprites.draw(screen)
-        if counter_fps % 8 == 0:
-            player.update(None, None)
         unit_group.draw(screen)
 
-        if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT:
-            return True
+        keys = pygame.key.get_pressed()
 
         for door in doors:
             if is_near_door(player, door):
@@ -1125,6 +952,9 @@ def main_page():
         elif near_door is not None:
             render_use()
             render_dialog(near_door)
+
+        if counter_fps % 8 == 0:
+            player.update(None, None, False)
 
         counter_fps += 1
         if counter_fps == 60:
