@@ -49,10 +49,14 @@ class Upgrade(pygame.sprite.Sprite):
             self.image = load_image('upgrade_doublejump.png')
             self.dialogue = 'Теперь вам доступен двойной прыжок'
             self.upg_lvl = 2
+        elif player_lvl == 2:
+            self.image = load_image('upgrade_dash.png')
+            self.dialogue = 'Ключ от Огненного подземелья'
+            self.upg_lvl = 3
         else:
             self.image = load_image('upgrade_dash.png')
-            self.dialogue = 'хз'
-
+            self.dialogue = 'Ключ от Огненного подземелья'
+            self.upg_lvl = 3
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -202,7 +206,7 @@ class MainHero(pygame.sprite.Sprite):
                 self.rect.y -= 1
                 self.gravity = -20
                 self.is_jumping = True
-                if self.level == 2:
+                if self.level > 1:
                     self.double_jump_available = True
             elif self.double_jump_available:
                 self.rect.y -= 1
@@ -220,7 +224,8 @@ class MainHero(pygame.sprite.Sprite):
             self.is_dash = False
             self.dash_avaible = False
             self.dash_distance = 240  # Distance for dash
-            self.target_x = self.rect.x - self.dash_distance if self.direction == 'left' else self.rect.x + self.dash_distance
+            self.target_x = self.rect.x - self.dash_distance\
+                if self.direction == 'left' else self.rect.x + self.dash_distance
 
             # Calculate the distance and direction for the dash
             self.dash_distance = abs(self.target_x - self.rect.x)
@@ -451,10 +456,6 @@ def all_blocks_correct(blocks_group):
 def guide():
     global PLAYER_LVL, FPS
 
-    def render_use():
-        text = FONT_25.render('Нажмите "E", чтобы Взаимодействовать', True, (255, 255, 255))
-        screen.blit(text, (WIDTH - 400, 5))
-
     def render_dialog(dialogs, completed, pos):
         x = pos[0]
         y = pos[1]
@@ -471,7 +472,6 @@ def guide():
             dialog = FONT_50.render(dialogs, True, color)
             screen.blit(dialog, (x, y))
 
-    updated_lvl_index = 0
     level_to_update = pytmx.load_pygame('maps/guide.1.tmx')
     running = True
     tasks = {
@@ -490,8 +490,6 @@ def guide():
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
 
-    upgrade = None
-
     lvl_map = pytmx.load_pygame(f'maps/guide.tmx')
 
     player = MainHero(units_group, 12 * TILE_SIZE, 7 * TILE_SIZE, PLAYER_LVL)
@@ -502,7 +500,7 @@ def guide():
     render_examples = False
     render_timer = False
     final_exam = False
-    final_update = False
+
     is_guide_over = False
     render_death = False
     is_dead = False
@@ -648,7 +646,8 @@ def guide():
                            'Попробуйте ещё раз'],
                           False, (100, 100))
 
-        if examples_passed == 0 and not render_incorrect_block_ and not render_examples and not render_timer and not tasks:
+        if examples_passed == 0 and not render_incorrect_block_ \
+                and not render_examples and not render_timer and not tasks:
             render_dialog(['Это математические блоки, они будут мешать вам во время прохождения уровней.',
                            'Чтобы их уничтожить, нужно выстрелить с помощью ЛКМ в тот блок который противоречит '
                            'равенству.'], False, (100, 100))
@@ -691,7 +690,7 @@ def guide():
             render_examples = False
             render_timer = False
             final_exam = False
-            final_update = False
+
             is_guide_over = False
             is_dead = False
             for s in all_sprites:
@@ -802,10 +801,15 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     else:
         timer = Timer(5, 800, 20)
     generate_level(lvl_map, all_sprites, platforms)
+    if player.level == 3:
+        player.level = 4
     if upgrade_pos and upgrade_pos[1] == 0:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
                           PLAYER_LVL)
     elif upgrade_pos and upgrade_pos[1] == 1:
+        upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
+                          PLAYER_LVL)
+    elif upgrade_pos and upgrade_pos[1] == 2:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
                           PLAYER_LVL)
 
@@ -829,7 +833,8 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         if not status:
             return False
 
-        if player.rect.right >= WIDTH or player.rect.left <= 0 or player.rect.bottom >= HEIGHT or player.rect.bottom <= 0:
+        if player.rect.right >= WIDTH or player.rect.left <= 0 \
+                or player.rect.bottom >= HEIGHT or player.rect.bottom <= 0:
             return True
 
         # Обновление выстрелов
@@ -893,8 +898,14 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         if player.slow_motion:
             if upgrade:
                 render_dialog(upgrade)
+        if map_name == 'cloud_map2.tmx':
+            if upgrade:
+                if player.level == 3:
+                    render_dialog(upgrade)
+                else:
+                    upgrade_group.draw(screen)
 
-        if player.level == 2 and updated_lvl_index != 2:
+        if player.level == 2 and map_name == 'map4.tmx':
             if upgrade:
                 render_dialog(upgrade)
         if player.level == 1 and updated_lvl_index != 2:
@@ -934,8 +945,8 @@ def main_page():
 
     doors = [
         Door(5 * 80, 10 * 80, "Earth", "Подземелье земли"),
-        Door(19 * 80, 10 * 80, "Sand", "Пещера огня"),
-        Door(21 * 80, 3 * 80, "Fire", "Облачное подземелье"),
+        Door(19 * 80, 10 * 80, "Fire", "Пещера огня"),
+        Door(21 * 80, 3 * 80, "Cloud", "Облачное подземелье"),
         Door(3 * 80, 4 * 80, "Water", "Пещера воды")
     ]
 
@@ -1001,12 +1012,11 @@ LEVELS = {
     'Earth': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
                'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
                                               [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx'], [[5, 6], 1]]},
-              False, False],
-    'Fire': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
-              'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
-                                             [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx']]}, False,
-             False],
-    'Sand': [{'endless_map.tmx': [[[11, 11]], False, [[2, 1, 1, 8, 0, 'horizontal'],
+              False],
+    'Cloud': [{'cloud_map1.tmx': [[[6, 11]], False, [[2, 1, 1, 2, 0, 'horizontal']], []],
+               'cloud_map2.tmx': [[[4, 10]], False, [[2, 1, 1, 9, 0, 'vertical']], [], [[21, 2], 2]],
+               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], []]}, False],
+    'Fire': [{'endless_map.tmx': [[[11, 11]], False, [[2, 1, 1, 8, 0, 'horizontal'],
                                                       [2, 1, 1, 7, 1, 'vertical'],
                                                       [2, 1, 1, 16, 1, 'vertical'],
                                                       [2, 1, 1, 1, 5, 'vertical'],
