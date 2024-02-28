@@ -39,7 +39,7 @@ FPS = 60
 
 
 class Upgrade(pygame.sprite.Sprite):
-    def __init__(self, group, x, y, player_lvl, image, dial, upg):
+    def __init__(self, group, x, y, image, dial, upg):
         super().__init__(group)
         self.image = load_image(image)
         self.dialogue = dial
@@ -504,8 +504,6 @@ def guide():
     render_examples = False
     render_timer = False
     final_exam = False
-
-    is_guide_over = False
     render_death = False
     is_dead = False
 
@@ -655,6 +653,9 @@ def guide():
         if update_example:
             for block in generate_random_algebraic_conversions(2, 1, 1, 9 * TILE_SIZE, 3 * TILE_SIZE, 'horizontal'):
                 blocks.add(block)
+            if __name__ == '__main__':
+                if __name__ == '__main__':
+                    timer.timer = timer.max_seconds
 
         if render_timer:
             render_dialog(['По истечении таймера вы проигрываете!',
@@ -706,7 +707,6 @@ def guide():
             render_timer = False
             final_exam = False
 
-            is_guide_over = False
             is_dead = False
             for s in all_sprites:
                 all_sprites.remove(s)
@@ -741,10 +741,13 @@ def start_screen():
                 m_x = pos[0]
                 m_y = pos[1]
 
-                if event.button == 1 and 190 < m_x < 611 and 190 < m_y < 409:
+                if event.button == 1 and 200 < m_x < 1000 and 90 < m_y < 310:
                     return True
 
-                if event.button == 1 and 190 < m_x < 760 and 490 < m_y < 709:
+                if event.button == 1 and 200 < m_x < 1000 and 410 < m_y < 630:
+                    return guide()
+
+                if event.button == 1 and 200 < m_x < 1000 and 730 < m_y < 950:
                     return guide()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
@@ -785,7 +788,8 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     def render_dialog(upg):
         dialog = FONT_25.render(upg.dialogue, True, (255, 255, 255))
         screen.blit(dialog, (100, 100))
-
+    score = None
+    score_to_win = 2000
     updated_lvl_index = 0
     running = True
 
@@ -822,13 +826,13 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         player.level = 4
     if upgrade_pos and upgrade_pos[1] == 1:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          PLAYER_LVL, 'upgrade_dash.png', 'Нажмите клавишу SHIFT для рывка', 1)
+                          'upgrade_dash.png', 'Нажмите клавишу SHIFT для рывка', 1)
     elif upgrade_pos and upgrade_pos[1] == 2:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          PLAYER_LVL, 'upgrade_doublejump.png', 'Теперь вам доступен двойной прыжок', 2)
+                          'upgrade_doublejump.png', 'Теперь вам доступен двойной прыжок', 2)
     elif upgrade_pos and upgrade_pos[1] == 3:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          PLAYER_LVL, 'key.png', 'Ключ от пещеры огня', 3)
+                          'key.png', 'Ключ от пещеры огня', 3)
 
     while running:
         screen.fill('gray')
@@ -837,7 +841,11 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                 terminate()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
+                    if score:
+                        if score >= score_to_win:
+                            return True
                     return False
+
                 if event.key == pygame.K_n:
                     return True
 
@@ -848,11 +856,20 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
 
         status = player.update_movement([blocks, platforms])
         if not status:
+            if score:
+                if score >= score_to_win:
+                    return True
             return False
 
         if player.rect.right >= WIDTH or player.rect.left <= 0 \
                 or player.rect.bottom >= HEIGHT or player.rect.bottom <= 0:
-            return True
+            if not score:
+                return True
+            else:
+                if score:
+                    if score >= score_to_win:
+                        return True
+                return False
 
         # Обновление выстрелов
         for fire in fires:
@@ -861,6 +878,9 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         hits = pygame.sprite.groupcollide(blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
+                if score:
+                    if score >= score_to_win:
+                        return True
                 return False
 
         blocks_need_delete = []
@@ -916,6 +936,8 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         counter_fps += 1
         if blocks:
             if not timer.update():
+                if score >= score_to_win:
+                    return True
                 return False
         pygame.draw.rect(screen, 'red', player.rect, 5)
         if updated_lvl_index == 2 and player.level == 0:
@@ -972,7 +994,7 @@ def main_page(statuses):
             dialog = FONT_25.render(placeholder, True, 'white')
         else:
             dialog = FONT_25.render(near_npc_.dialogue, True, near_npc_.color)
-        screen.blit(dialog, (near_npc_.x - 60, near_npc_.y - 150))
+        screen.blit(dialog, (near_npc_.x - 90, near_npc_.y - 150))
 
     doors = [
         Door(5 * 80, 10 * 80, "Earth", "Пещера земли", statuses["Earth"]),
@@ -1056,7 +1078,8 @@ LEVELS = {
               False, False],
     'Cloud': [{'cloud_map1.tmx': [[[6, 11]], False, [[2, 1, 1, 2, 0, 'horizontal']], []],
                'cloud_map2.tmx': [[[4, 11]], False, [[2, 1, 1, 9, 0, 'vertical']], ['cloud_map2.1.tmx'], [[21, 2], 3]],
-               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], ['cloud_map3.1.tmx']]}, False, False],
+               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], ['cloud_map3.1.tmx']]}, False,
+              False],
     'Fire': [{'endless_map.tmx': [[[11, 11]], False, [[2, 1, 1, 8, 0, 'horizontal'],
                                                       [2, 1, 1, 7, 1, 'vertical'],
                                                       [2, 1, 1, 16, 1, 'vertical'],
@@ -1124,10 +1147,8 @@ def main():
     game_not_over = True
     while game_not_over:
 
-
         running = start_screen()
         show_story()
-
 
         while running:
             statuses = {}
