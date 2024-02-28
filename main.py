@@ -717,6 +717,10 @@ def show_level(name, map_name, player_cords, pos_blocks, levels_to_update, upgra
         dialog = FONT_25.render(upg.dialogue, True, (255, 255, 255))
         screen.blit(dialog, (100, 100))
 
+    def render(text):
+        dialog = FONT_25.render(text, True, (255, 255, 255))
+        screen.blit(dialog, (100, 100))
+
     score = None
     score_to_win = 2000
     updated_lvl_index = 0
@@ -869,8 +873,9 @@ def show_level(name, map_name, player_cords, pos_blocks, levels_to_update, upgra
         counter_fps += 1
         if blocks:
             if not timer.update():
-                if score >= score_to_win:
-                    return True
+                if score:
+                    if score >= score_to_win:
+                        return True
                 return False
         pygame.draw.rect(screen, 'red', player.rect, 5)
         if updated_lvl_index == 2 and player.level == 0:
@@ -894,6 +899,10 @@ def show_level(name, map_name, player_cords, pos_blocks, levels_to_update, upgra
         if player.level == 1 and updated_lvl_index != 2:
             if upgrade:
                 upgrade_group.draw(screen)
+        if score:
+            render('Чтобы пройти огненную пещеру вам необходимо набрать 2000 очков')
+            if score >= 2000:
+                return True
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -1025,24 +1034,13 @@ LEVELS = {
 }
 
 
-def show_story():
+def show_story(text):
     all_sprites = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     unit_group = pygame.sprite.Group()
     player = MainHero(unit_group, 1600, 880, 0)
     player.direction = 'left'
     index_text = 0
-    text = ['Эта история произошла давным\n давно в очень далеком месте...',
-            'Молодой ученый по имени Эдвард,\n обнаружил магический плащ,\n способный открывать порталы\n в '
-            'различные миры.',
-            'Однажды, проведя эксперимент\n с плащом, Эдвард оказывается\n в загадочном мире,\n где математика '
-            'является\n ключом ко всему.',
-            'Он встречает древнего мудреца,\n который сообщает ему,\n что мир находится под\n угрозой темных сил,'
-            '\n которые хотят использовать\n математические знания для\n своих эгоистичных целей.',
-            'Для того чтобы спасти мир\n и вернуться домой,\n Эдварду предстоит пройти\n через различные '
-            'математические\n испытания и задачи,\n получив ключи и мудрость\n для остановки зла.',
-            'Вместе с плащом,\n который дает ему способности\n решать сложные\n математические задачи, '
-            'Эдвард\n отправляется в увлекательное\n приключение.']
     counter_fps = 0
 
     lvl_map = pytmx.load_pygame(f'maps/tower.tmx')
@@ -1083,7 +1081,18 @@ def main():
 
         running = start_screen()
         if need_to_show_story:
-            show_story()
+            show_story(['Эта история произошла давным\n давно в очень далеком месте...',
+                        'Молодой искатель приключений по имени Эдвард,\n обнаружил магический плащ,\n способный '
+                        'открывать порталы\n в'
+                        'различные миры.',
+                        'Однажды, проведя эксперимент\n с плащом, Эдвард оказывается\n в загадочном мире,'
+                        '\n где математика '
+                        'является\n ключом ко всему.',
+                        'Он встречает древнего мудреца,\n который сообщает ему, о математическом подземелье',
+                        'Для того чтобы стать гением математики,\n Эдварду предстоит пройти\n через различные '
+                        'математические\n испытания и задачи.',
+                        'Вместе с плащом,\n который дает ему способности\n решать сложные математические задачи,\n'
+                        ' Эдвард отправляется в увлекательное\n приключение.'])
             conn = sqlite3.connect('data_player.db')
             cursor = conn.cursor()
             cursor.execute('''UPDATE player
@@ -1138,8 +1147,11 @@ def main():
 
             if GAME_OVER:
                 running = False
+                game_not_over = False
 
-    final_page()
+    show_story(['Эдвард успешно прошёл все испытания математического подземелья,\n'
+                ' \стал гением математики и покинул этот прекрасный,\n математический мир',
+                'Конец!'])
     pygame.quit()
     sys.exit()
 
