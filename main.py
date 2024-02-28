@@ -295,13 +295,25 @@ def terminate():
 def new_game():
     conn = sqlite3.connect('data_player.db')
     cursor = conn.cursor()
-    cursor.execute('''UPDATE player
-                         SET player_lvl = 0,
-                             earth = 0,
-                             water = 0,
-                             cloud = 0,
-                             fire = 0,
-                             show_story = 0''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS player (
+    player_lvl INTEGER DEFAULT 0,
+    earth INTEGER DEFAULT 0,
+    water INTEGER DEFAULT 0,
+    cloud INTEGER DEFAULT 0,
+    fire INTEGER DEFAULT 0,
+    show_story INTEGER DEFAULT 0)''')
+    conn.commit()
+    res = cursor.execute('''SELECT * FROM player''').fetchone()
+    if not res:
+        cursor.execute('''INSERT INTO player (name, lvl_player, earth, water, cloud, fire, show_story)''')
+    else:
+        cursor.execute('''UPDATE player
+                             SET player_lvl = 0,
+                                 earth = 0,
+                                 water = 0,
+                                 cloud = 0,
+                                 fire = 0,
+                                 show_story = 0''')
     conn.commit()
     conn.close()
 
