@@ -305,7 +305,9 @@ def new_game():
     conn.commit()
     res = cursor.execute('''SELECT * FROM player''').fetchone()
     if not res:
-        cursor.execute('''INSERT INTO player (name, lvl_player, earth, water, cloud, fire, show_story)''')
+        cursor.execute('''INSERT INTO player (player_lvl, earth, water, cloud, fire, show_story)
+                              VALUES (?, ?, ?, ?, ?, ?)''',
+                       (0, 0, 0, 0, 0, 0))
     else:
         cursor.execute('''UPDATE player
                              SET player_lvl = 0,
