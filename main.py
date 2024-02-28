@@ -35,6 +35,7 @@ BAD_PLATFORMS = [
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
+need_to_show_story = True
 FPS = 60
 
 
@@ -872,6 +873,9 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                         if endless:
                             score += 10
                             count_destroyed_blocks += 1
+                            if count_destroyed_blocks % 5 == 0:
+                                if timer.max_seconds > 4:
+                                    timer.max_seconds -= 0.5
                             score += int(timer.timer * 5)
                         timer.timer = timer.max_seconds
 
@@ -1121,13 +1125,14 @@ def show_story():
 
 
 def main():
+    global need_to_show_story
     game_not_over = True
     while game_not_over:
 
-
         running = start_screen()
-        show_story()
-
+        if need_to_show_story:
+            show_story()
+            need_to_show_story = False
 
         while running:
             statuses = {}
