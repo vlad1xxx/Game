@@ -352,7 +352,6 @@ def update_db_lvl(lvl):
     conn.close()
 
 
-
 def generate_random_algebraic_conversions(count_correct_num, count_incorrect_num, num_group, x, y, direction):
     conversions = []
     random_num = random.choices(['1', '2', '3', '4', '5', '6', '7', '8', '9'], k=count_correct_num)
@@ -660,7 +659,6 @@ def guide():
                 'Нажмите клавишу SPACE чтобы прыгнуть': [pygame.K_SPACE, False, (100, 300)]
             }
 
-        pygame.draw.rect(screen, 'red', player.rect, 5)
 
         pygame.display.flip()
         clock.tick(FPS)
@@ -722,7 +720,7 @@ def update_level(lvl, all_group, plat_group):
     generate_level(lvl_map, all_group, plat_group)
 
 
-def show_level(name, map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos=None, endless=False):
+def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos=None, endless=False):
     global PLAYER_LVL, FPS
 
     def render_dialog(upg):
@@ -889,7 +887,6 @@ def show_level(name, map_name, player_cords, pos_blocks, levels_to_update, upgra
                     if score >= score_to_win:
                         return True
                 return False
-        pygame.draw.rect(screen, 'red', player.rect, 5)
         if updated_lvl_index == 2 and player.level == 0:
             if upgrade:
                 upgrade_group.draw(screen)
@@ -1162,7 +1159,7 @@ def main():
                 game_not_over = False
 
     show_story(['Эдвард успешно прошёл все испытания математического подземелья,\n'
-                ' \стал гением математики и покинул этот прекрасный,\n математический мир',
+                'стал гением математики и покинул этот прекрасный,\n математический мир',
                 'Конец!'])
     pygame.quit()
     sys.exit()
