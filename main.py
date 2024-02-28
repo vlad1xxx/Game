@@ -1,53 +1,13 @@
-import math
-import pytmx
-import pygame
-import sys
-import os
 import random
-from settings import FONT_25
+import sqlite3
+import sys
+import math
 
-WIDTH = 1920
-HEIGHT = 1040
-TILE_SIZE = 80
-PLAYER_LVL = 0
-IMAGES = {'0': 'blocks/number1.png',
-          '1': 'blocks/number2.png',
-          '2': 'blocks/number3.png',
-          '3': 'blocks/number4.png',
-          '4': 'blocks/number5.png',
-          '5': 'blocks/number6.png',
-          '6': 'blocks/number7.png',
-          '7': 'blocks/number8.png',
-          '8': 'blocks/number9.png',
-          '9': 'blocks/number10.png',
-          '+': 'blocks/symbol_plus.png',
-          '=': 'blocks/symbol_equal.png',
-          '-': 'blocks/symbol_minus.png',
-          '*': 'blocks/symbol_mult.png'}
+import pygame
+import pytmx
 
-GOOD_PLATFORMS = [
-    9, 10, 12, 13, 16, 20, 21, 22, 28, 29, 15, 52, 44, 37, 36, 72, 78
-]
-BAD_PLATFORMS = [
-    81, 82, 83, 84, 66, 91, 64
-]
-
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
-clock = pygame.time.Clock()
-need_to_show_story = True
-FPS = 60
-
-
-class Upgrade(pygame.sprite.Sprite):
-    def __init__(self, group, x, y, image, dial, upg):
-        super().__init__(group)
-        self.image = load_image(image)
-        self.dialogue = dial
-        self.upg_lvl = upg
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+from settings import FONT_25, TILE_SIZE, WIDTH, HEIGHT
+from sprites import Block, Platform, Timer, Upgrade, Door, screen, load_image, Fire
 
 
 class MainHero(pygame.sprite.Sprite):
@@ -312,106 +272,73 @@ class MainHero(pygame.sprite.Sprite):
                 self.stay_index = (self.stay_index + 1) % len(self.stay_anim_left)
 
 
-class Enemy(pygame.sprite.Sprite):
-    def __init__(self, group, x, y):
-        super().__init__(group)
+PLAYER_LVL = 0
 
+GOOD_PLATFORMS = [
+    9, 10, 12, 13, 16, 20, 21, 22, 28, 29, 15, 52, 44, 37, 36, 72, 78
+]
+BAD_PLATFORMS = [
+    81, 82, 83, 84, 66, 91, 64
+]
 
-class Door:
-    def __init__(self, x, y, name, dialogue, status):
-        self.x = x
-        self.y = y
-        self.rect = pygame.Rect(self.x - 80, self.y - 160, 160, 240)
-        self.name = name
-        self.dialogue = dialogue
-        if status:
-            self.color = 'green'
-        else:
-            self.color = 'white'
-
-
-class Fire(pygame.sprite.Sprite):
-    def __init__(self, x, y, angle):
-        super().__init__()
-        self.angle = angle
-        self.speed = 10  # Скорость выстрела
-        self.anim = [load_image('fire_animation/fire1.png'),
-                     load_image('fire_animation/fire2.png'),
-                     load_image('fire_animation/fire3.png'),
-                     load_image('fire_animation/fire4.png')]
-        self.index_anim = 0
-        self.image = self.anim[self.index_anim]
-        self.rect = self.image.get_rect()
-        self.rect.center = (x, y)
-
-    def update(self):
-        self.rect.x += (self.speed * math.cos(self.angle)) / 2
-        self.rect.y += (self.speed * math.sin(self.angle)) / 2
-
-    def update_animation(self):
-        self.image = self.anim[self.index_anim]
-        self.index_anim = (self.index_anim + 1) % len(self.anim)
-
-
-class Block(pygame.sprite.Sprite):
-    def __init__(self, x, y, is_correct, num_group, value):
-        super().__init__()
-        if value in IMAGES:
-            self.image = load_image(IMAGES[value])
-        else:
-            self.image = pygame.Surface((70, 100))
-        self.rect = self.image.get_rect()
-        self.rect.topleft = (x, y)
-        self.is_correct = is_correct
-        self.num_group = num_group
-        self.value = value
-
-
-class Platform(pygame.sprite.Sprite):
-    def __init__(self, x, y, image, isbad=False):
-        super().__init__()
-        self.isbad = isbad
-        if not image:
-            self.image = pygame.Surface((160, 160))
-            self.image.fill('blue')
-        else:
-            self.image = image
-        self.rect = self.image.get_rect()
-        self.rect.topleft = (x, y)
-
-
-class Timer:
-    def __init__(self, seconds, x, y):
-        self.max_seconds = seconds
-        self.x = x
-        self.y = y
-        self.timer = seconds
-        self.counter_fps = 0
-
-    def update(self):
-        self.timer -= 0.01666667
-        pygame.draw.rect(screen, 'grey', (self.x, self.y, 60 * self.max_seconds, 30))
-        if self.timer < 2:
-            pygame.draw.rect(screen, 'red', (self.x, self.y, 60 * self.timer, 30))
-        else:
-            pygame.draw.rect(screen, 'yellow', (self.x, self.y, 60 * self.timer, 30))
-        if self.timer <= 0:
-            return False
-        return True
-
-
-def load_image(name):
-    fullname = os.path.join('images/', name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    return image
+pygame.init()
+clock = pygame.time.Clock()
+need_to_show_story = True
+FPS = 60
 
 
 def terminate():
     pygame.quit()
     sys.exit()
+
+
+def new_game():
+    conn = sqlite3.connect('data_player.db')
+    cursor = conn.cursor()
+    cursor.execute('''UPDATE player
+                         SET player_lvl = 0,
+                             earth = 0,
+                             water = 0,
+                             cloud = 0,
+                             fire = 0,
+                             show_story = 0''')
+    conn.commit()
+    conn.close()
+
+
+def continue_game():
+    global need_to_show_story, PLAYER_LVL
+    conn = sqlite3.connect('data_player.db')
+    cursor = conn.cursor()
+    res = cursor.execute('''SELECT * FROM player''').fetchone()
+    PLAYER_LVL = res[0]
+    LEVELS['Earth'][1] = bool(res[1])
+    LEVELS['Water'][1] = bool(res[2])
+    LEVELS['Cloud'][1] = bool(res[3])
+    LEVELS['Fire'][1] = bool(res[4])
+    need_to_show_story = not bool(res[5])
+    conn.commit()
+    conn.close()
+
+
+def update_db_player(name):
+    LEVELS[name][1] = True
+    conn = sqlite3.connect('data_player.db')
+    cursor = conn.cursor()
+    cursor.execute(f'''UPDATE player
+                          SET {name.lower()} = ?''', [1])
+    conn.commit()
+    conn.close()
+
+
+def update_db_lvl(lvl):
+    conn = sqlite3.connect('data_player.db')
+    cursor = conn.cursor()
+    cursor.execute('''UPDATE player
+                          SET player_lvl = ?''', [1])
+    conn.commit()
+    conn.close()
+
 
 
 def generate_random_algebraic_conversions(count_correct_num, count_incorrect_num, num_group, x, y, direction):
@@ -741,10 +668,12 @@ def start_screen():
                 m_y = pos[1]
 
                 if event.button == 1 and 200 < m_x < 1000 and 90 < m_y < 310:
+                    new_game()
                     return True
 
                 if event.button == 1 and 200 < m_x < 1000 and 410 < m_y < 630:
-                    return guide()
+                    continue_game()
+                    return True
 
                 if event.button == 1 and 200 < m_x < 1000 and 730 < m_y < 950:
                     return guide()
@@ -781,12 +710,13 @@ def update_level(lvl, all_group, plat_group):
     generate_level(lvl_map, all_group, plat_group)
 
 
-def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos=None, endless=False):
+def show_level(name, map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos=None, endless=False):
     global PLAYER_LVL, FPS
 
     def render_dialog(upg):
         dialog = FONT_25.render(upg.dialogue, True, (255, 255, 255))
         screen.blit(dialog, (100, 100))
+
     score = None
     score_to_win = 2000
     updated_lvl_index = 0
@@ -918,6 +848,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                     player.slow_motion = True
                 PLAYER_LVL = upgrade.upg_lvl
                 player.level = upgrade.upg_lvl
+                update_db_lvl(upgrade.upg_lvl)
                 upgrade_group.empty()
 
         if player.slow_motion:
@@ -1150,10 +1081,16 @@ def main():
     game_not_over = True
     while game_not_over:
 
-
         running = start_screen()
         if need_to_show_story:
             show_story()
+            conn = sqlite3.connect('data_player.db')
+            cursor = conn.cursor()
+            cursor.execute('''UPDATE player
+                                  SET show_story = ?''', [1])
+
+            conn.commit()
+            conn.close()
             need_to_show_story = False
 
         while running:
@@ -1172,7 +1109,7 @@ def main():
                     if len(LEVELS[curr_npc][0][lvl]) > 4:
                         upgrade_pos = LEVELS[curr_npc][0][lvl][4]
 
-                    if show_level(lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos,
+                    if show_level(curr_npc, lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos,
                                   endless=endless) is True:
                         LEVELS[curr_npc][0][lvl][1] = True
                     else:
@@ -1193,6 +1130,9 @@ def main():
                 if LEVELS[npc][1] is False:
                     are_all_npc_passed = False
                     break
+            for elem in LEVELS.keys():
+                if LEVELS[elem][1]:
+                    update_db_player(elem)
 
             GAME_OVER = are_all_npc_passed
 
