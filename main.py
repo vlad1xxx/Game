@@ -1128,7 +1128,7 @@ def main():
                     if len(LEVELS[curr_npc][0][lvl]) > 4:
                         upgrade_pos = LEVELS[curr_npc][0][lvl][4]
 
-                    if show_level(curr_npc, lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos,
+                    if show_level(lvl, player_cords, pos_blocks, levels_to_update, upgrade_pos,
                                   endless=endless) is True:
                         LEVELS[curr_npc][0][lvl][1] = True
                     else:
