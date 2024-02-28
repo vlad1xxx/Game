@@ -659,7 +659,6 @@ def guide():
                 'Нажмите клавишу SPACE чтобы прыгнуть': [pygame.K_SPACE, False, (100, 300)]
             }
 
-
         pygame.display.flip()
         clock.tick(FPS)
 
