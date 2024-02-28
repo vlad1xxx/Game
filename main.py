@@ -39,24 +39,11 @@ FPS = 60
 
 
 class Upgrade(pygame.sprite.Sprite):
-    def __init__(self, group, x, y, player_lvl):
+    def __init__(self, group, x, y, player_lvl, image, dial, upg):
         super().__init__(group)
-        if player_lvl == 0:
-            self.image = load_image('upgrade_dash.png')
-            self.dialogue = 'Нажмите Shift для Рывка'
-            self.upg_lvl = 1
-        elif player_lvl == 1:
-            self.image = load_image('upgrade_doublejump.png')
-            self.dialogue = 'Теперь вам доступен двойной прыжок'
-            self.upg_lvl = 2
-        elif player_lvl == 2:
-            self.image = load_image('upgrade_dash.png')
-            self.dialogue = 'Ключ от Огненного подземелья'
-            self.upg_lvl = 3
-        else:
-            self.image = load_image('upgrade_dash.png')
-            self.dialogue = 'Ключ от Огненного подземелья'
-            self.upg_lvl = 3
+        self.image = load_image(image)
+        self.dialogue = dial
+        self.upg_lvl = upg
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -330,12 +317,16 @@ class Enemy(pygame.sprite.Sprite):
 
 
 class Door:
-    def __init__(self, x, y, name, dialogue):
+    def __init__(self, x, y, name, dialogue, status):
         self.x = x
         self.y = y
         self.rect = pygame.Rect(self.x - 80, self.y - 160, 160, 240)
         self.name = name
         self.dialogue = dialogue
+        if status:
+            self.color = 'green'
+        else:
+            self.color = 'white'
 
 
 class Fire(pygame.sprite.Sprite):
@@ -537,10 +528,12 @@ def guide():
             fire.update()
         update_example = False
         final_update = False
+        is_guide_over = False
         hits = pygame.sprite.groupcollide(blocks, fires, True, True)
         for key in hits.keys():
             if key.is_correct:
                 if final_exam:
+                    is_guide_over = False
                     for block in blocks:
                         blocks.remove(block)
                     final_exam = False
@@ -622,6 +615,7 @@ def guide():
                     all_sprites.empty()
                     generate_level(lvl_map, all_sprites, platforms)
                     final_update = False
+                is_guide_over = False
                 render_timer = True
                 render_examples = False
                 render_incorrect_block_ = False
@@ -826,15 +820,15 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     generate_level(lvl_map, all_sprites, platforms)
     if player.level == 3:
         player.level = 4
-    if upgrade_pos and upgrade_pos[1] == 0:
+    if upgrade_pos and upgrade_pos[1] == 1:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          PLAYER_LVL)
-    elif upgrade_pos and upgrade_pos[1] == 1:
-        upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          PLAYER_LVL)
+                          PLAYER_LVL, 'upgrade_dash.png', 'Нажмите клавишу SHIFT для рывка', 1)
     elif upgrade_pos and upgrade_pos[1] == 2:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          PLAYER_LVL)
+                          PLAYER_LVL, 'upgrade_doublejump.png', 'Теперь вам доступен двойной прыжок', 2)
+    elif upgrade_pos and upgrade_pos[1] == 3:
+        upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
+                          PLAYER_LVL, 'key.png', 'Ключ от пещеры огня', 3)
 
     while running:
         screen.fill('gray')
@@ -965,7 +959,7 @@ def final_page():
         clock.tick(FPS)
 
 
-def main_page():
+def main_page(statuses):
     def is_near_door(player_, npc_):
         return pygame.sprite.collide_rect(player_, npc_)
 
@@ -973,17 +967,21 @@ def main_page():
         text = FONT_25.render('Нажмите "E", чтобы Войти', True, (255, 255, 255))
         screen.blit(text, (WIDTH - 400, 5))
 
-    def render_dialog(near_npc_):
-        dialog = FONT_25.render(near_npc_.dialogue, True, (255, 255, 255))
-        screen.blit(dialog, (near_npc_.x - 60, near_npc_.y - 100))
+    def render_dialog(near_npc_, placeholder=None):
+        if placeholder:
+            dialog = FONT_25.render(placeholder, True, 'white')
+        else:
+            dialog = FONT_25.render(near_npc_.dialogue, True, near_npc_.color)
+        screen.blit(dialog, (near_npc_.x - 60, near_npc_.y - 150))
 
     doors = [
-        Door(5 * 80, 10 * 80, "Earth", "Подземелье земли"),
-        Door(19 * 80, 10 * 80, "Fire", "Пещера огня"),
-        Door(21 * 80, 3 * 80, "Cloud", "Облачное подземелье"),
-        Door(3 * 80, 4 * 80, "Water", "Пещера воды")
-    ]
+        Door(5 * 80, 10 * 80, "Earth", "Пещера земли", statuses["Earth"]),
+        Door(19 * 80, 10 * 80, "Fire", "Пещера огня", statuses["Fire"]),
+        Door(21 * 80, 3 * 80, "Cloud", "Облачная пещера", statuses["Cloud"]),
+        Door(3 * 80, 4 * 80, "Water", "Пещера воды", statuses["Water"]),
 
+    ]
+    is_tryna_open = False
     running = True
 
     all_sprites = pygame.sprite.Group()
@@ -1025,11 +1023,20 @@ def main_page():
                 near_door = None
 
         if near_door is not None and keys[pygame.K_e]:
-            return near_door.name
+            if near_door.name == 'Fire':
+                if player.level > 2:
+                    return near_door.name
+                else:
+                    is_tryna_open = True
+            else:
+                return near_door.name
 
         elif near_door is not None:
-            render_use()
-            render_dialog(near_door)
+            if near_door.name == 'Fire' and is_tryna_open:
+                render_dialog(near_door, "Дверь закрыта на ключ")
+            else:
+                render_use()
+                render_dialog(near_door)
 
         if counter_fps % 8 == 0:
             player.update(None, None, False)
@@ -1048,8 +1055,8 @@ LEVELS = {
                                               [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx'], [[5, 6], 1]]},
               False, False],
     'Cloud': [{'cloud_map1.tmx': [[[6, 11]], False, [[2, 1, 1, 2, 0, 'horizontal']], []],
-               'cloud_map2.tmx': [[[4, 10]], False, [[2, 1, 1, 9, 0, 'vertical']], [], [[21, 2], 2]],
-               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], []]}, False, False],
+               'cloud_map2.tmx': [[[4, 11]], False, [[2, 1, 1, 9, 0, 'vertical']], ['cloud_map2.1.tmx'], [[21, 2], 3]],
+               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], ['cloud_map3.1.tmx']]}, False, False],
     'Fire': [{'endless_map.tmx': [[[11, 11]], False, [[2, 1, 1, 8, 0, 'horizontal'],
                                                       [2, 1, 1, 7, 1, 'vertical'],
                                                       [2, 1, 1, 16, 1, 'vertical'],
@@ -1057,7 +1064,7 @@ LEVELS = {
                                                       [2, 1, 1, 22, 5, 'vertical']], []]}, False, True],
     'Water': [{'map3.tmx': [[[5, 3]], False, [[2, 1, 1, 8, 0, 'vertical'], [2, 1, 2, 16, 4, 'horizontal']], []],
                'map4.tmx': [[[3, 0]], False, [[2, 1, 1, 6, 6, 'vertical'], [2, 1, 2, 11, 5, 'horizontal']], [],
-                            [[22, 8], 1]]
+                            [[22, 8], 2]]
                }, False, False]
 }
 
@@ -1117,10 +1124,16 @@ def main():
     game_not_over = True
     while game_not_over:
 
+
         running = start_screen()
         show_story()
+
+
         while running:
-            curr_npc = main_page()
+            statuses = {}
+            for key in LEVELS.keys():
+                statuses[key] = LEVELS[key][1]
+            curr_npc = main_page(statuses)
 
             if curr_npc:
                 for lvl in LEVELS[curr_npc][0].keys():
