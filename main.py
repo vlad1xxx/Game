@@ -347,7 +347,7 @@ def update_db_lvl(lvl):
     conn = sqlite3.connect('data_player.db')
     cursor = conn.cursor()
     cursor.execute('''UPDATE player
-                          SET player_lvl = ?''', [1])
+                          SET player_lvl = ?''', [lvl])
     conn.commit()
     conn.close()
 
