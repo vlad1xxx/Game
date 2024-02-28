@@ -4,7 +4,7 @@ import pygame
 import sys
 import os
 import random
-from settings import FONT_25, FONT_50
+from settings import FONT_25
 
 WIDTH = 1920
 HEIGHT = 1040
@@ -224,7 +224,7 @@ class MainHero(pygame.sprite.Sprite):
             self.is_dash = False
             self.dash_avaible = False
             self.dash_distance = 240  # Distance for dash
-            self.target_x = self.rect.x - self.dash_distance\
+            self.target_x = self.rect.x - self.dash_distance \
                 if self.direction == 'left' else self.rect.x + self.dash_distance
 
             # Calculate the distance and direction for the dash
@@ -324,6 +324,11 @@ class MainHero(pygame.sprite.Sprite):
                 self.stay_index = (self.stay_index + 1) % len(self.stay_anim_left)
 
 
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, group, x, y):
+        super().__init__(group)
+
+
 class Door:
     def __init__(self, x, y, name, dialogue):
         self.x = x
@@ -338,14 +343,22 @@ class Fire(pygame.sprite.Sprite):
         super().__init__()
         self.angle = angle
         self.speed = 10  # Скорость выстрела
-        self.image = pygame.Surface((5, 5))
-        self.image.fill('red')
+        self.anim = [load_image('fire_animation/fire1.png'),
+                     load_image('fire_animation/fire2.png'),
+                     load_image('fire_animation/fire3.png'),
+                     load_image('fire_animation/fire4.png')]
+        self.index_anim = 0
+        self.image = self.anim[self.index_anim]
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
 
     def update(self):
         self.rect.x += (self.speed * math.cos(self.angle)) / 2
         self.rect.y += (self.speed * math.sin(self.angle)) / 2
+
+    def update_animation(self):
+        self.image = self.anim[self.index_anim]
+        self.index_anim = (self.index_anim + 1) % len(self.anim)
 
 
 class Block(pygame.sprite.Sprite):
@@ -465,11 +478,11 @@ def guide():
             color = 'white'
         if type(dialogs) is list:
             for i in dialogs:
-                dialog = FONT_50.render(i, True, color)
+                dialog = FONT_25.render(i, True, color)
                 screen.blit(dialog, (x, y))
                 y += 50
         elif type(dialogs) is str:
-            dialog = FONT_50.render(dialogs, True, color)
+            dialog = FONT_25.render(dialogs, True, color)
             screen.blit(dialog, (x, y))
 
     level_to_update = pytmx.load_pygame('maps/guide.1.tmx')
@@ -594,6 +607,8 @@ def guide():
         all_sprites.draw(screen)
         if counter_fps % 8 == 0:
             player.update(fires, all_sprites, True)
+            for fire in fires:
+                fire.update_animation()
         units_group.draw(screen)
         blocks.draw(screen)
 
@@ -774,7 +789,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     global PLAYER_LVL, FPS
 
     def render_dialog(upg):
-        dialog = FONT_50.render(upg.dialogue, True, (255, 255, 255))
+        dialog = FONT_25.render(upg.dialogue, True, (255, 255, 255))
         screen.blit(dialog, (100, 100))
 
     updated_lvl_index = 0
@@ -864,7 +879,6 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
                             score += 10
                             count_destroyed_blocks += 1
                             score += int(timer.timer * 5)
-                            print(score)
                         timer.timer = timer.max_seconds
 
                     else:
@@ -896,8 +910,14 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         all_sprites.draw(screen)
         if counter_fps % 8 == 0:
             player.update(fires, all_sprites, True)
+            for fire in fires:
+                fire.update_animation()
         units_group.draw(screen)
         blocks.draw(screen)
+
+        if endless:
+            score_text = FONT_25.render(f'Score: {score}', False, (255, 255, 255))
+            screen.blit(score_text, (25, 50))
 
         counter_fps += 1
         if blocks:
@@ -1041,10 +1061,26 @@ LEVELS = {
                }, False, False]
 }
 
-def show_story():
 
+def show_story():
     all_sprites = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
+    unit_group = pygame.sprite.Group()
+    player = MainHero(unit_group, 1600, 880, 0)
+    player.direction = 'left'
+    index_text = 0
+    text = ['Эта история произошла давным\n давно в очень далеком месте...',
+            'Молодой ученый по имени Эдвард,\n обнаружил магический плащ,\n способный открывать порталы\n в '
+            'различные миры.',
+            'Однажды, проведя эксперимент\n с плащом, Эдвард оказывается\n в загадочном мире,\n где математика '
+            'является\n ключом ко всему.',
+            'Он встречает древнего мудреца,\n который сообщает ему,\n что мир находится под\n угрозой темных сил,'
+            '\n которые хотят использовать\n математические знания для\n своих эгоистичных целей.',
+            'Для того чтобы спасти мир\n и вернуться домой,\n Эдварду предстоит пройти\n через различные '
+            'математические\n испытания и задачи,\n получив ключи и мудрость\n для остановки зла.',
+            'Вместе с плащом,\n который дает ему способности\n решать сложные\n математические задачи, '
+            'Эдвард\n отправляется в увлекательное\n приключение.']
+    counter_fps = 0
 
     lvl_map = pytmx.load_pygame(f'maps/tower.tmx')
     generate_level(lvl_map, all_sprites, platforms)
@@ -1053,13 +1089,29 @@ def show_story():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                index_text += 1
+                if index_text == len(text):
+                    return True
 
         all_sprites.draw(screen)
+        unit_group.draw(screen)
+        if counter_fps % 8 == 0:
+            player.update(None, None, False)
+        counter_fps += 1
+        if counter_fps == 60:
+            counter_fps = 0
+
+        y = 0
+        for elem in text[index_text].split('\n'):
+            dialog = FONT_25.render(elem, False, (255, 255, 255))
+            screen.blit(dialog, (700, y * 50 + 150))
+            y += 1
+        dialog = FONT_25.render('Нажмите ЛКМ, чтобы продолжить', False, (255, 255, 255))
+        screen.blit(dialog, (1380, 1030))
         pygame.display.flip()
         clock.tick(FPS)
+
 
 def main():
     game_not_over = True
