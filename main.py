@@ -2,7 +2,7 @@ import random
 import sqlite3
 import sys
 import math
-
+import json
 import pygame
 import pytmx
 
@@ -95,13 +95,16 @@ class MainHero(pygame.sprite.Sprite):
         self.direction = 'right'
         self.is_dash = False
         self.is_dashing = False
-        self.dash_avaible = True
+        self.dash_available = True
         self.level = level
         self.slow_motion = False
         self.coll = False
         self.target_x = 0
         self.double_jump_available = False
         self.space_pressed = False
+        self.dash_distance = None
+        self.dash_direction = None
+        self.dash_step = None
 
     def update_movement(self, sprites):
         global FPS
@@ -123,7 +126,7 @@ class MainHero(pygame.sprite.Sprite):
         else:
             self.rect.y += 1
             self.coll = False
-            self.dash_avaible = True
+            self.dash_available = True
             for ls in sprites:
                 for elem in ls:
                     if self.rect.colliderect(elem.rect):
@@ -168,28 +171,25 @@ class MainHero(pygame.sprite.Sprite):
         if not keys[pygame.K_SPACE]:
             self.space_pressed = False
 
-        if keys[pygame.K_LSHIFT] and not self.is_dashing and self.dash_avaible and self.level > 0:
+        if keys[pygame.K_LSHIFT] and not self.is_dashing and self.dash_available and self.level > 0:
             self.is_dash = False
-            self.dash_avaible = False
-            self.dash_distance = 240  # Distance for dash
+            self.dash_available = False
+            self.dash_distance = 240
             self.target_x = self.rect.x - self.dash_distance \
                 if self.direction == 'left' else self.rect.x + self.dash_distance
 
-            # Calculate the distance and direction for the dash
             self.dash_distance = abs(self.target_x - self.rect.x)
             if self.target_x < self.rect.x:
                 self.dash_direction = -1
             else:
                 self.dash_direction = 1
 
-            # Set up flags for dash state
             self.is_dashing = True
             self.dash_step = self.speed * 2 * self.dash_direction
 
         elif not keys[pygame.K_LSHIFT]:
             self.is_dash = True
 
-        # Continue the dash movement if the player is dashing
         if self.is_dashing:
             self.slow_motion = False
             FPS = 60
@@ -280,7 +280,7 @@ GOOD_PLATFORMS = [
 BAD_PLATFORMS = [
     81, 82, 83, 84, 66, 91, 64
 ]
-
+near_door = None
 pygame.init()
 clock = pygame.time.Clock()
 need_to_show_story = True
@@ -469,6 +469,9 @@ def guide():
         final_update = False
         is_guide_over = False
         hits = pygame.sprite.groupcollide(blocks, fires, True, True)
+
+        blocks_need_delete = []
+
         for key in hits.keys():
             if key.is_correct:
                 if final_exam:
@@ -517,7 +520,6 @@ def guide():
                 render_timer = False
                 timer.timer = timer.max_seconds
 
-        blocks_need_delete = []
         for key in hits.keys():
             for block in blocks:
                 if block.num_group == key.num_group:
@@ -700,7 +702,6 @@ def generate_level(level, all_group, group_plats):
     for y in range(level.height):
         s = ''
         for x in range(level.width):
-
             image = level.get_tile_image(x, y, 0)
             lvl_id = level.tiledgidmap[level.get_tile_gid(x, y, 0)]
             s += str(lvl_id) + ' '
@@ -745,7 +746,7 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
     upgrade_group = pygame.sprite.Group()
     platforms = pygame.sprite.Group()
     fires = pygame.sprite.Group()
-
+    count_destroyed_blocks = None
     if not endless:
         for ls in pos_blocks:
             for block in generate_random_algebraic_conversions(ls[0], ls[1], ls[2], ls[3] * 80, ls[4] * 80, ls[5]):
@@ -917,23 +918,9 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         clock.tick(FPS)
 
 
-def final_page():
-    fon = pygame.transform.scale(load_image('final.jpg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
-
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return
-
-        pygame.display.flip()
-        clock.tick(FPS)
-
-
 def main_page(statuses):
+    global near_door
+
     def is_near_door(player_, npc_):
         return pygame.sprite.collide_rect(player_, npc_)
 
@@ -1023,25 +1010,9 @@ def main_page(statuses):
         clock.tick(FPS)
 
 
-LEVELS = {
-    'Earth': [{'map1.tmx': [[[12, 6]], False, [[2, 1, 1, 9, 2, 'horizontal']], ['map1.1.tmx']],
-               'map2.tmx': [[[2, 2]], False, [[2, 1, 1, 12, 3, 'horizontal'],
-                                              [2, 1, 2, 3, 5, 'vertical']], ['map2.1.tmx', 'map2.2.tmx'], [[5, 6], 1]]},
-              False, False],
-    'Cloud': [{'cloud_map1.tmx': [[[6, 11]], False, [[2, 1, 1, 2, 0, 'horizontal']], []],
-               'cloud_map2.tmx': [[[4, 11]], False, [[2, 1, 1, 9, 0, 'vertical']], ['cloud_map2.1.tmx'], [[21, 2], 3]],
-               'cloud_map3.tmx': [[[17, 0]], False, [[2, 1, 1, 23, 0, 'vertical']], ['cloud_map3.1.tmx']]}, False,
-              False],
-    'Fire': [{'endless_map.tmx': [[[11, 11]], False, [[2, 1, 1, 8, 0, 'horizontal'],
-                                                      [2, 1, 1, 7, 1, 'vertical'],
-                                                      [2, 1, 1, 16, 1, 'vertical'],
-                                                      [2, 1, 1, 1, 5, 'vertical'],
-                                                      [2, 1, 1, 22, 5, 'vertical']], []]}, False, True],
-    'Water': [{'map3.tmx': [[[5, 3]], False, [[2, 1, 1, 8, 0, 'vertical'], [2, 1, 2, 16, 4, 'horizontal']], []],
-               'map4.tmx': [[[3, 0]], False, [[2, 1, 1, 6, 6, 'vertical'], [2, 1, 2, 11, 5, 'horizontal']], [],
-                            [[22, 8], 2]]
-               }, False, False]
-}
+with open('levels.json', 'r') as f:
+    json_s = json.load(f)
+LEVELS = json_s
 
 
 def show_story(text):
