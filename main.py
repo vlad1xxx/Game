@@ -771,13 +771,13 @@ def show_level(map_name, player_cords, pos_blocks, levels_to_update, upgrade_pos
         player.level = 4
     if upgrade_pos and upgrade_pos[1] == 1:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          'upgrade_dash.png', 'Нажмите клавишу SHIFT для рывка', 1)
+                          'upgrades/upgrade_dash.png', 'Нажмите клавишу SHIFT для рывка', 1)
     elif upgrade_pos and upgrade_pos[1] == 2:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          'upgrade_doublejump.png', 'Теперь вам доступен двойной прыжок', 2)
+                          'upgrades/upgrade_doublejump.png', 'Теперь вам доступен двойной прыжок', 2)
     elif upgrade_pos and upgrade_pos[1] == 3:
         upgrade = Upgrade(upgrade_group, upgrade_pos[0][0] * TILE_SIZE + 20, upgrade_pos[0][1] * TILE_SIZE + 20,
-                          'key.png', 'Ключ от пещеры огня', 3)
+                          'upgrades/key.png', 'Ключ от пещеры огня', 3)
 
     while running:
         screen.fill('gray')
